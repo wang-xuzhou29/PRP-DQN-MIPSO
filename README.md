@@ -21,7 +21,11 @@
 * **状态定义域 (State Bounds):** $X, Y, Z \in [1, 50]$
 * **动态动作增量 (Action Deltas):** 基于变量范围动态计算，正负向步长比例严格按照 **70%, 50%, 20%, 10%, 5%** 划分。
 * **动作维度 (Action Dim):** **30** (3个维度 × 10个动作选项)
-
+<p align="center">
+  <img src="images/图二DQN结构.png" alt="传统 DQN 模型结构图 (Structure diagram of DQN model)" width="80%">
+  <br>
+  <em>图 2: 传统 DQN 模型结构图</em>
+</p>
 ### 2.2 PRP-DQN 模型架构 
 为精准提取一维状态特征，DQN 底层采用了定制化的 **一维卷积神经网络 (1D-CNN)**：
 * **卷积层 (Conv1d):**
