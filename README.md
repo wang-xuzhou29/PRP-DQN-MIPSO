@@ -22,7 +22,7 @@
 * **动态动作增量 (Action Deltas):** 基于变量范围动态计算，正负向步长比例严格按照 **70%, 50%, 20%, 10%, 5%** 划分。
 * **动作维度 (Action Dim):** **30** (3个维度 × 10个动作选项)
 <p align="center">
-  <img src="images/图二DQN结构.png" alt="传统 DQN 模型结构图 (Structure diagram of DQN model)" width="80%">
+  <img src="图二DQN结构.png" alt="传统 DQN 模型结构图 (Structure diagram of DQN model)" width="80%">
   <br>
   <em>图 2: 传统 DQN 模型结构图</em>
 </p>
