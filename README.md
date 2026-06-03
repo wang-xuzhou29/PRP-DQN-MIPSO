@@ -11,7 +11,7 @@
 ### 1.2 核心软件依赖
 * **Python:** 3.8+
 * **Deep Learning Framework:** PyTorch (自动检测 CUDA/CPU)
-* **核心库:** `numpy`, `openpyxl`, `psutil
+* **核心库:** `numpy`, `openpyxl`, `psutil`
 ---
 ## 2. 核心实验参数与代码实现细节
 
@@ -69,7 +69,7 @@
 * **MI-PSO 算法:** 引入变异系数动态监测种群停滞情况。
 * **变异反转机制 (Mutation-Inversion):** 一旦检测到陷入局部最优，触发基于严重程度的反向学习机制替换冗余个体，保持种群多样性。
 
-## 3. 核心算法与伪代码 
+## 4. 核心算法与伪代码 
 系统计算路径之间的 Jaccard 相似度，将输入的路径集合聚类为高相关性路径组 ($G_{high}$) 和低相关性路径组 ($G_{low}$) 。
 ```text
 Algorithm 1: Path Grouping Based on High and Low Correlation
@@ -263,6 +263,94 @@ Ensure: Test Suite T_final
 ---------------------------------------------------------------------------
 ```
 
-## 4. 快速开始 (Quick Start)
+## 5. 快速开始 (Quick Start)
 
 本项目设计为一键式单次独立运行系统，直接运行主脚本即可启动包含数据生成、模型训练与 PSO 优化的完整实验：
+
+### 5.1 克隆仓库
+
+```bash
+git clone https://github.com/wang-xuzhou29/PRP-DQN-MIPSO.git
+cd PRP-DQN-MIPSO
+```
+
+### 5.2 安装依赖
+
+建议使用 Python 3.8+。如需 GPU 训练，请根据本机 CUDA 版本安装对应的 PyTorch。
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5.3 运行完整实验
+
+```bash
+python "Core Algorithm Implementations/PRP-DQN/code.py"
+```
+
+该脚本会依次执行路径分组、样本生成、PRP-DQN 训练、MI-PSO 优化，并将结果导出到 `results/` 目录。
+
+### 5.4 运行单独模块
+
+路径分组：
+
+```bash
+python "Algorithm 1pathgrouping.py"
+```
+
+优质样本筛选：
+
+```bash
+python "Algorithm 2sample_selection.py"
+```
+
+测试数据生成：
+
+```bash
+python "Generate test data.py"
+```
+
+## 6. 仓库结构
+
+```text
+PRP-DQN-MIPSO/
+├── Algorithm 1pathgrouping.py
+├── Algorithm 2sample_selection.py
+├── Generate test data.py
+├── Core Algorithm Implementations/
+│   └── PRP-DQN/
+│       ├── code.py
+│       ├── path_samples/
+│       └── *.csv
+├── path_samples/
+├── Picture/
+├── results/
+├── docs/
+│   └── REPRODUCIBILITY.md
+├── requirements.txt
+├── CITATION.cff
+├── LICENSE
+└── README.md
+```
+
+## 7. 复现实验
+
+详细复现流程见 [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)，其中包括环境配置、主实验命令、辅助脚本、输入输出目录以及随机种子说明。
+
+## 8. 引用
+
+如果本仓库对你的研究有帮助，请引用对应论文：
+
+```bibtex
+@article{wang2026prpdqnmipso,
+  title  = {Enhancing Test Data Generation via Path-Grouped Reusable Prioritized DQN and PSO for Mutation Testing},
+  author = {Wang, Xuzhou},
+  year   = {2026}
+}
+```
+
+GitHub 也会自动识别仓库根目录下的 [CITATION.cff](CITATION.cff) 文件。
+
+## 9. 许可证
+
+本项目采用 MIT License，详见 [LICENSE](LICENSE)。

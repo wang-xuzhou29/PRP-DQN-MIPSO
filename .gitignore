@@ -26,3 +26,17 @@ Thumbs.db
 # 临时数据文件
 *.tmp
 *.bak
+
+# Model checkpoints and generated experiment artifacts
+*.pt
+*.pth
+*.ckpt
+runs/
+logs/
+checkpoints/
+
+# Python test and build caches
+.pytest_cache/
+build/
+dist/
+*.egg-info/
