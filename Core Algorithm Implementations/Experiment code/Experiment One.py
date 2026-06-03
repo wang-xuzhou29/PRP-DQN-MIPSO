@@ -482,6 +482,6 @@ if __name__ == '__main__':
     print("开始执行孤岛路径四标准评分...")
 
     # 执行评分
-    results = run_isolated_path_scoring(samples_per_path=500)  
+    results = run_isolated_path_scoring(samples_per_path=500)
 
     print("\n程序执行完成！")
