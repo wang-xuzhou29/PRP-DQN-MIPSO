@@ -13,15 +13,10 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import sys
 
-# === 设备设置 ===
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# ==============================================================================
-# ==========  动态范围与动作配置区域  ==========
-# ==============================================================================
-
-# 1. 设置三维取值范围
 X_MIN = 1
 X_MAX = 50
 Y_MIN = 1
@@ -36,41 +31,27 @@ BOUNDS = {
 }
 
 
-# 2. 动态计算动作增量函数
 def calculate_dynamic_deltas(min_val, max_val):
-    """
-    根据范围动态计算动作增量
-    比例：70%, 50%, 20%, 10%, 5%
-    """
+
     value_range = max_val - min_val
-    # 定义动作比例
     ratios = [0.7, 0.5, 0.2, 0.1, 0.05]
 
-    # 计算正向步长，确保最小步长至少为1
     pos_deltas = [max(1, int(value_range * r)) for r in ratios]
 
     deltas = pos_deltas + [-d for d in pos_deltas]
     return deltas
 
-
-# 3. 生成动态动作列表
 DELTA_X = calculate_dynamic_deltas(X_MIN, X_MAX)
 DELTA_Y = calculate_dynamic_deltas(Y_MIN, Y_MAX)
 DELTA_Z = calculate_dynamic_deltas(Z_MIN, Z_MAX)
 
-print(f"动态计算动作增量 (Range X: {X_MAX - X_MIN}): {DELTA_X}")
-print(f"动态计算动作增量 (Range Y: {Y_MAX - Y_MIN}): {DELTA_Y}")
-print(f"动态计算动作增量 (Range Z: {Z_MAX - Z_MIN}): {DELTA_Z}")
-
-# ==============================================================================
-
-# === PSO参数设置 ===
-CV_THRESHOLD = 0.03  # 变异系数阈值
+print(f" (Range X: {X_MAX - X_MIN}): {DELTA_X}")
+print(f" (Range Y: {Y_MAX - Y_MIN}): {DELTA_Y}")
+print(f" (Range Z: {Z_MAX - Z_MIN}): {DELTA_Z}")
 
 
-# ========================================
-# ========== 状态归一化函数 ==========
-# ========================================
+CV_THRESHOLD = 0.03
+
 def normalize_state(state):
     normalized = np.array([
         (state[0] - BOUNDS['x'][0]) / (BOUNDS['x'][1] - BOUNDS['x'][0]),
@@ -87,9 +68,6 @@ def denormalize_state(normalized_state):
         normalized_state[2] * (BOUNDS['z'][1] - BOUNDS['z'][0]) + BOUNDS['z'][0]
     ])
     return state
-
-
-# ========================================
 
 
 def generate_random_state():
@@ -120,7 +98,6 @@ def execute_Tr(position):
     return Tr(x, y, z)
 
 
-# === 增强版指标收集器 ===
 class MetricsCollector:
     def __init__(self):
         self.start_time = None
@@ -210,8 +187,6 @@ def compute_reward(state, target_path, triggered, prev_triggered=None, prev_stat
 
 
 def Tr(dx, dy, dz):
-    """执行目标函数并返回触发的路径"""
-    # --- 1. 常量与配置 ---
     MAX_GRID_SIZE = 500.0
     MIN_PLANNING_X = 10.0
     MIN_PLANNING_Y = 15.0
@@ -228,7 +203,6 @@ def Tr(dx, dy, dz):
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
     simulated_y = current_y
 
-    # --- 分支 1-4 ---
     if abs(dx) < MIN_PLANNING_X != abs(dy) < MIN_PLANNING_X:
         triggered.add(1)
     if abs(dx) < MIN_PLANNING_X != abs(dz) < MIN_PLANNING_X:
@@ -238,7 +212,6 @@ def Tr(dx, dy, dz):
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Z:
         triggered.add(4)
 
-    # --- 分支 5-9 ---
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dx) > MIN_PLANNING_Z * 2:
         triggered.add(5)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dy) > MIN_PLANNING_Z * 2:
@@ -250,7 +223,6 @@ def Tr(dx, dy, dz):
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Z:
         triggered.add(9)
 
-    # --- 分支 10-15 ---
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 10:
         triggered.add(10)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 30:
@@ -264,7 +236,6 @@ def Tr(dx, dy, dz):
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dz < 20:
         triggered.add(15)
 
-    # --- 分支 16-21 ---
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dx) > CRITICAL_X_VELOCITY * 1.5:
         triggered.add(16)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dz) > CRITICAL_X_VELOCITY * 1.5:
@@ -278,7 +249,6 @@ def Tr(dx, dy, dz):
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Y_VELOCITY * 1.5:
         triggered.add(21)
 
-    # --- 分支 22-29 ---
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_X < current_z and dz > CRITICAL_Z_VELOCITY:
         triggered.add(22)
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_Y < current_z and dz > CRITICAL_Z_VELOCITY:
@@ -299,7 +269,6 @@ def Tr(dx, dy, dz):
     return triggered
 
 
-# 目标路径定义
 targetPaths = [
     {1, 2, 4, 11, 12, 13, 14, 15},
     {5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 29},
@@ -322,8 +291,6 @@ def calculate_fitness(position, target_path):
     union = len(triggered | target_path)
     return intersection / union if union > 0 else 0.0
 
-
-# === 路径相似度矩阵计算 ===
 def compute_path_similarity_matrix(paths):
     n = len(paths)
     matrix = np.zeros((n, n))
@@ -334,8 +301,6 @@ def compute_path_similarity_matrix(paths):
             matrix[i][j] = inter / union if union > 0 else 0.0
     return matrix
 
-
-# === 路径分组 ===
 def group_paths_by_similarity(paths):
     sim_matrix = compute_path_similarity_matrix(paths)
     avg_sim_scores = np.mean(sim_matrix, axis=1)
@@ -350,8 +315,6 @@ def group_paths_by_similarity(paths):
     isolated_group = [i for i in range(len(paths)) if i not in similar_group]
     return similar_group, isolated_group
 
-
-# === 样本生成===
 def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, top_k=200):
     def jaccard_similarity_local(a, b):
         if not a and not b:
@@ -386,7 +349,6 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
                 x, y, z = int(s[0][0]), int(s[0][1]), int(s[0][2])
                 f.write(f"{x} {y} {z}\t{s[1]:.4f}\t{s[2]:.4f}\t{s[3]:.4f}\t{s[4]:.4f}\n")
 
-    print("正在为相似路径组生成样本数据...")
     base_dir = os.path.join(os.getcwd(), "../../path_samples")
     for path_idx in similar_group_indices:
         path = targetPaths[path_idx]
@@ -407,8 +369,6 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
             samples.sort(key=lambda x: x[1], reverse=True)
             save_samples(path_id=path_idx + 1, samples=samples[:top_k], base_dir=base_dir)
 
-
-# === 经验回放池===
 class SharedExperienceReplay:
     def __init__(self, capacity=10000):
         self.capacity = capacity
@@ -472,46 +432,23 @@ def load_path_data(file_path):
     return path_data
 
 
-# === DQN网络 ===
-# === DQN网络 (真正的 CNN 架构) ===
 class DQN(nn.Module):
-    """基于一维卷积神经网络 (1D-CNN) 的深度Q网络"""
 
     def __init__(self, state_dim, action_dim):
         super(DQN, self).__init__()
 
-        # 1. 卷积层部分 (特征提取)
-        # 输入维度: (batch_size, channels=1, length=state_dim)
-        # 第一层：32 个卷积核
         self.conv1 = nn.Conv1d(in_channels=1, out_channels=32, kernel_size=1)
-        # 第二层：64 个卷积核
         self.conv2 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=1)
-
-        # 2. 全连接层部分 (动作价值映射)
-        # 经过两次 kernel_size=1 的卷积后，特征长度仍为 state_dim (即 3)
-        # 展平后的维度为：64个通道 * 3 = 192
         self.flatten_dim = 64 * state_dim
-
-        # 连接一个 32 神经元的全连接层，再输出最终的动作维度
         self.fc1 = nn.Linear(self.flatten_dim, 32)
         self.fc2 = nn.Linear(32, action_dim)
 
     def forward(self, state):
-        # 原始 state 形状: (batch_size, state_dim)
-        # 增加通道维度，适应卷积输入要求: (batch_size, 1, state_dim)
         x = state.unsqueeze(1)
-
-        # 经过卷积层 + 激活函数
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
-
-        # 将多维特征图展平为 1D 向量
         x = x.view(x.size(0), -1)
-
-        # 经过全连接层 + 激活函数
         x = torch.relu(self.fc1(x))
-
-        # 输出每个动作的 Q 值 (不加激活函数)
         return self.fc2(x)
 
 
@@ -602,7 +539,6 @@ class DQNAgentWithPER:
         self.target_model.load_state_dict(self.model.state_dict())
 
 
-# === 第一阶段训练函数===
 def generate_and_train_for_similar_paths(agent, similar_group, path_documents, run_metrics, episodes=500, batch_size=32,
                                          steps_per_test=5, replay_times=10, is_isolated=False):
     trained_paths = set()
@@ -838,8 +774,6 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
 
     return agent_isolated
 
-
-# === PSO粒子类 ===
 class Particle:
     def __init__(self, initial_position=None):
         if initial_position is not None:
@@ -861,8 +795,6 @@ class Particle:
         self.best_fitness = 0
         self.fitness = 0
 
-
-# === PSO优化器类 ===
 class PSO:
     def __init__(self, target_path, swarm_size=20, dqn_samples=None):
         self.target_path = target_path
@@ -1007,20 +939,14 @@ class PSO:
         self.handle_local_optimum(iteration)
 
 
-# === 导出单次运行结果到Excel ===
 def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
-    """
-    为了保持兼容性，虽然是单次运行，但我们仍然使用列表结构传入数据。
-    all_run_results: [pso_results]
-    all_run_metrics: [run_metrics]
-    """
+
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"DQN_PSO_SingleRun_{timestamp}.xlsx"
 
     wb = Workbook()
 
-    # 样式定义
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(name='微软雅黑', size=11, bold=True, color="FFFFFF")
     success_fill = PatternFill(start_color="C6E0B4", end_color="C6E0B4", fill_type="solid")
@@ -1037,7 +963,6 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
     center_align = Alignment(horizontal='center', vertical='center')
     left_align = Alignment(horizontal='left', vertical='center')
 
-    # ========== 工作表1: 运行汇总 ==========
     ws1 = wb.active
     ws1.title = "运行汇总"
     ws1.sheet_view.showGridLines = False
@@ -1053,7 +978,6 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
         cell.alignment = center_align
         ws1.column_dimensions[get_column_letter(col)].width = width
 
-    # 因为只运行一次，循环只执行一次
     for run_idx, (results, run_metrics) in enumerate(zip(all_run_results, all_run_metrics), start=1):
         success_count = sum(1 for r in results if r['perfect_match'])
         success_rate = (success_count / len(targetPaths)) * 100
@@ -1090,7 +1014,6 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
             elif col == 7 and dqn_solved_count > 0:
                 cell.fill = dqn_fill
 
-    # ========== 工作表2: 路径统计 ==========
     ws2 = wb.create_sheet(title="路径详情")
     ws2.sheet_view.showGridLines = False
 
@@ -1105,7 +1028,6 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
         cell.alignment = center_align
         ws2.column_dimensions[get_column_letter(col)].width = width
 
-    # 提取单次运行的结果
     single_run_results = all_run_results[0]
 
     for path_idx, result in enumerate(single_run_results):
@@ -1145,7 +1067,6 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
             if col == 5 and method == 'DQN':
                 cell.fill = dqn_fill
 
-    # ========== 工作表3: 最佳粒子详情 ==========
     ws3 = wb.create_sheet(title="最佳粒子参数")
     ws3.sheet_view.showGridLines = False
 
@@ -1181,7 +1102,6 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
             if fitness == 1.0:
                 cell.fill = success_fill
 
-    # 保存文件
     output_dir = os.path.join(os.getcwd(), "../../results")
     os.makedirs(output_dir, exist_ok=True)
     filepath = os.path.join(output_dir, filename)

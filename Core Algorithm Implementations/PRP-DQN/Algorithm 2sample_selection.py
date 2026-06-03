@@ -3,9 +3,7 @@ import numpy as np
 import random
 import time
 
-# =========================
-# ===== 参数配置区 ========
-# =========================
+
 X_MIN, X_MAX = 1, 50
 Y_MIN, Y_MAX = 1, 50
 Z_MIN, Z_MAX = 1, 50
@@ -14,16 +12,8 @@ STATE_MIN = np.array([X_MIN, Y_MIN, Z_MIN])
 STATE_MAX = np.array([X_MAX, Y_MAX, Z_MAX])
 
 
-# =========================
-# ===== 环境函数 ========
-# =========================
 def Tr(state):
-    """
-    执行目标函数并返回触发的路径集合
-    模拟复杂逻辑分支触发
-    :param state: np.array([dx, dy, dz])
-    :return: set of triggered path indices
-    """
+
     dx, dy, dz = state
     MAX_GRID_SIZE = 500.0
     MIN_PLANNING_X, MIN_PLANNING_Y, MIN_PLANNING_Z = 10.0, 15.0, 8.0
@@ -36,20 +26,17 @@ def Tr(state):
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
     simulated_y = current_y
 
-    # --- 分支 1-4 ---
     if abs(dx) < MIN_PLANNING_X != abs(dy) < MIN_PLANNING_X: triggered.add(1)
     if abs(dx) < MIN_PLANNING_X != abs(dz) < MIN_PLANNING_X: triggered.add(2)
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Y: triggered.add(3)
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Z: triggered.add(4)
 
-    # --- 分支 5-9 ---
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dx) > MIN_PLANNING_Z * 2: triggered.add(5)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dy) > MIN_PLANNING_Z * 2: triggered.add(6)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_X * 2: triggered.add(7)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Y * 2: triggered.add(8)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Z: triggered.add(9)
 
-    # --- 分支 10-15 ---
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 10: triggered.add(10)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 30: triggered.add(11)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 40: triggered.add(12)
@@ -57,7 +44,6 @@ def Tr(state):
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dx < 20: triggered.add(14)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dz < 20: triggered.add(15)
 
-    # --- 分支 16-21 ---
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dx) > CRITICAL_X_VELOCITY * 1.5: triggered.add(16)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dz) > CRITICAL_X_VELOCITY * 1.5: triggered.add(17)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_X_VELOCITY: triggered.add(18)
@@ -65,7 +51,6 @@ def Tr(state):
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Z_VELOCITY * 1.5: triggered.add(20)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Y_VELOCITY * 1.5: triggered.add(21)
 
-    # --- 分支 22-29 ---
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_X < current_z and dz > CRITICAL_Z_VELOCITY: triggered.add(
         22)
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_Y < current_z and dz > CRITICAL_Z_VELOCITY: triggered.add(
@@ -86,17 +71,12 @@ def Tr(state):
     return triggered
 
 
-# =========================
-# ===== 核心指标函数 =====
-# =========================
 def jaccard_similarity(a, b):
-    """计算 Jaccard 相似度"""
     if not a and not b: return 1.0
     return len(a & b) / len(a | b) if a | b else 0.0
 
 
 def compute_robustness(state, path):
-    """计算扰动稳定性"""
     base_triggered = Tr(state)
     if not base_triggered: return 0.0
     rob, neighbors = 0.0, 0
@@ -112,19 +92,7 @@ def compute_robustness(state, path):
     return rob / neighbors if neighbors > 0 else 0.0
 
 
-# =========================
-# ===== 核心：样本筛选 =====
-# =========================
 def select_excellent_states(path_indices, all_paths, num_total=2000, top_k=200, weights=(0.33, 0.33, 0.34)):
-    """
-    根据综合评分 (Sim + Pl + Rob) 筛选高质量状态样本
-    :param path_indices: list[int] 要处理的路径索引
-    :param all_paths: list[set] 目标路径集合
-    :param num_total: int 每条路径生成的总样本数
-    :param top_k: int 最终选取的优质样本数
-    :param weights: tuple 三个指标权重
-    :return: dict {path_idx: list of selected samples}
-    """
     selected_samples = {}
     for path_idx in path_indices:
         path = all_paths[path_idx]
@@ -139,15 +107,9 @@ def select_excellent_states(path_indices, all_paths, num_total=2000, top_k=200, 
             samples.append((state, score, sim, pl, rob))
         samples.sort(key=lambda x: x[1], reverse=True)
         selected_samples[path_idx] = samples[:top_k]
-        print(f"Path {path_idx + 1} 完成样本筛选: 提取 {top_k} 个样本")
     return selected_samples
 
-
-# =========================
-# ===== 数据保存 =====
-# =========================
 def save_samples_per_path(samples_dict, base_dir, prefix="path", extension=".txt"):
-    """保存每条路径的样本到文本文件"""
     os.makedirs(base_dir, exist_ok=True)
     for path_id, samples in samples_dict.items():
         filepath = os.path.join(base_dir, f"{prefix}_{path_id + 1}{extension}")
@@ -158,10 +120,6 @@ def save_samples_per_path(samples_dict, base_dir, prefix="path", extension=".txt
                 state_str = ' '.join(map(str, s[0]))
                 f.write(f"{state_str}\t{s[1]:.4f}\t{s[2]:.4f}\t{s[3]:.4f}\t{s[4]:.4f}\n")
 
-
-# =========================
-# ===== 演示运行 =====
-# =========================
 if __name__ == '__main__':
     targetPaths = [
         {1, 2, 4, 11, 12, 13, 14, 15},
@@ -170,9 +128,7 @@ if __name__ == '__main__':
     ]
     G_high_indices = [0, 1]
 
-    print("为 G_high 路径组生成优质初始样本池...")
     start_time = time.time()
     best_samples = select_excellent_states(G_high_indices, targetPaths, num_total=1000, top_k=50)
     output_dir = "./path_samples"
     save_samples_per_path(best_samples, base_dir=output_dir)
-    print(f"样本筛选总耗时: {time.time() - start_time:.2f} 秒")

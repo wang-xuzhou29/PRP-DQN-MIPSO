@@ -7,9 +7,6 @@ X_MIN, X_MAX = 1, 50
 Y_MIN, Y_MAX = 1, 50
 Z_MIN, Z_MAX = 1, 50
 
-# =========================
-# ===== 目标函数 ========
-# =========================
 def Tr(state: List[float]) -> Set[int]:
 
     dx, dy, dz = state
@@ -57,22 +54,15 @@ def Tr(state: List[float]) -> Set[int]:
 
     return triggered
 
-# =========================
-# ===== 输入生成 ========
-# =========================
 def generate_input() -> List[float]:
-    """
-    生成随机输入，x,y,z都在1-50范围
-    """
+
     return [
         round(random.uniform(X_MIN, X_MAX), 1),
         random.randint(Y_MIN, Y_MAX),
         round(random.uniform(Z_MIN, Z_MAX), 1)
     ]
 
-# =========================
-# ===== 相似度与评分 ========
-# =========================
+
 def jaccard_similarity(set1: Set[int], set2: Set[int]) -> float:
     inter = len(set1 & set2)
     union = len(set1 | set2)
@@ -81,9 +71,7 @@ def jaccard_similarity(set1: Set[int], set2: Set[int]) -> float:
 def length_score(path: Set[int], target: Set[int]) -> float:
     return 1 - abs(len(path) - len(target)) / max(len(path), len(target), 1)
 
-# =========================
-# ===== 邻居扰动稳定性 ========
-# =========================
+
 def get_26_neighbors(x: float, y: int, z: float) -> List[Tuple[float, int, float]]:
     neighbors = []
     for dx in [-0.1,0,0.1]:
@@ -96,9 +84,7 @@ def get_26_neighbors(x: float, y: int, z: float) -> List[Tuple[float, int, float
                 neighbors.append((new_x,new_y,new_z))
     return neighbors
 
-# =========================
-# ===== 核心评分函数 ========
-# =========================
+
 def average_neighbor_similarity(x: float, y: int, z: float,
                                 path_map: Dict[Tuple[float,int,float], Set[int]]) -> float:
     center_path = path_map[(x,y,z)]
@@ -106,9 +92,7 @@ def average_neighbor_similarity(x: float, y: int, z: float,
     similarities = [jaccard_similarity(center_path, path_map[nb]) for nb in neighbors if nb in path_map]
     return sum(similarities)/len(similarities) if similarities else 0.0
 
-# =========================
-# ===== 主运行函数 ========
-# =========================
+
 def run_scoring_per_path_separate(samples_per_path=1000, top_k=200):
     targetPaths = [
         {1,2,4,11,12,13,14,15},
@@ -173,9 +157,6 @@ def run_scoring_per_path_separate(samples_per_path=1000, top_k=200):
 
     return results_summary
 
-# =========================
-# ===== 执行主程序 ========
-# =========================
 if __name__ == '__main__':
     print(f"开始生成评分样本, x/y/z取值范围: {X_MIN}-{X_MAX}")
     summary = run_scoring_per_path_separate(samples_per_path=1000, top_k=200)
