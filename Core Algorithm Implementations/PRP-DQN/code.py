@@ -1285,11 +1285,9 @@ if __name__ == "__main__":
     print(f"相似路径组: {[i + 1 for i in similar_group]}")
     print(f"孤岛路径组: {[i + 1 for i in isolated_group]}")
 
-    # 直接执行单次实验
     results, metrics = run_single_experiment(1, similar_group, isolated_group)
 
     print("\n正在导出结果到Excel...")
-    # 包装成列表以适应导出函数
     excel_filename = export_run_to_excel([results], [metrics])
 
     print(f"\n程序执行完成!")
