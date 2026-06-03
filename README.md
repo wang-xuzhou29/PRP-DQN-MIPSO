@@ -35,12 +35,6 @@ The following settings are used in the implemented experiments.
 - **Action deltas:** Dynamic step sizes are generated from the variable ranges using the ratios `70%`, `50%`, `20%`, `10%`, and `5%`, with both positive and negative directions.
 - **Action dimension:** `30`
 
-<p align="center">
-  <img src="fig2.png" alt="Traditional DQN model structure diagram" width="80%">
-  <br>
-  <em>Figure 2. Traditional DQN model structure diagram.</em>
-</p>
-
 ### 2.2 PRP-DQN Architecture
 
 The DQN backbone uses a customized one-dimensional convolutional neural network to extract features from the input state.
@@ -82,7 +76,27 @@ The DQN backbone uses a customized one-dimensional convolutional neural network 
 
 > Note: The coefficient-of-variation threshold is consistently set to `1.2` in this README. Please keep the implementation and thesis text aligned with this value.
 
-## 3. Core Modules
+## 3. Framework Overview
+
+<p align="center">
+  <img src="Picture/fig1.png" alt="Overall framework of PRP-DQN and MI-PSO" width="70%">
+  <br>
+  <em>Figure 1. Overall framework of the proposed PRP-DQN and MI-PSO test-data generation method.</em>
+</p>
+
+<p align="center">
+  <img src="Picture/fig2.png" alt="Traditional DQN model structure" width="80%">
+  <br>
+  <em>Figure 2. Traditional DQN model structure.</em>
+</p>
+
+<p align="center">
+  <img src="Picture/fig3.png" alt="Variant branch insertion example" width="80%">
+  <br>
+  <em>Figure 3. Example of the program after inserting variant branches.</em>
+</p>
+
+## 4. Core Modules
 
 - **Correlation-based path grouping:** Paths are divided into high-correlation and low-correlation groups according to Jaccard similarity.
 - **High-quality sample selection:** Initial input states are ranked by a comprehensive score that combines path similarity, path-length difference, and perturbation stability.
@@ -92,7 +106,7 @@ The DQN backbone uses a customized one-dimensional convolutional neural network 
 - **MI-PSO optimization:** The coefficient of variation is monitored to detect population stagnation.
 - **Mutation inversion:** Once stagnation is detected, boundary-symmetric reverse learning is triggered to maintain population diversity and improve the chance of covering difficult paths.
 
-## 4. Algorithms
+## 5. Algorithms
 
 ### Algorithm 1: Path Grouping Based on Correlation
 
@@ -235,18 +249,18 @@ Ensure: Final test suite T_final
 31: return T_final
 ```
 
-## 5. Quick Start
+## 6. Quick Start
 
 This project is designed as a single-run experimental system. Running the main script starts path grouping, sample generation, PRP-DQN training, MI-PSO optimization, and result export.
 
-### 5.1 Clone the Repository
+### 6.1 Clone the Repository
 
 ```bash
 git clone https://github.com/wang-xuzhou29/PRP-DQN-MIPSO.git
 cd PRP-DQN-MIPSO
 ```
 
-### 5.2 Install Dependencies
+### 6.2 Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -254,7 +268,7 @@ pip install -r requirements.txt
 
 If GPU acceleration is required, install the PyTorch version that matches your CUDA environment.
 
-### 5.3 Run the Full Experiment
+### 6.3 Run the Full Experiment
 
 ```bash
 python "Core Algorithm Implementations/PRP-DQN/code.py"
@@ -262,7 +276,7 @@ python "Core Algorithm Implementations/PRP-DQN/code.py"
 
 The script performs path grouping, sample generation, PRP-DQN training, MI-PSO optimization, and exports results to the `results/` directory.
 
-### 5.4 Run Individual Modules
+### 6.4 Run Individual Modules
 
 Path grouping:
 
@@ -282,33 +296,36 @@ Test-data generation:
 python "Generate test data.py"
 ```
 
-## 6. Repository Structure
+## 7. Repository Structure
 
 ```text
 PRP-DQN-MIPSO/
-├── Algorithm 1pathgrouping.py
-├── Algorithm 2sample_selection.py
-├── Generate test data.py
-├── Core Algorithm Implementations/
-│   └── PRP-DQN/
-│       ├── code.py
-│       ├── path_samples/
-│       └── *.csv
-├── path_samples/
-├── Picture/
-├── results/
-├── docs/
-│   └── REPRODUCIBILITY.md
-├── requirements.txt
-├── CITATION.cff
-├── LICENSE
-└── README.md
+|-- Algorithm 1pathgrouping.py
+|-- Algorithm 2sample_selection.py
+|-- Generate test data.py
+|-- Core Algorithm Implementations/
+|   `-- PRP-DQN/
+|       |-- code.py
+|       |-- path_samples/
+|       `-- *.csv
+|-- path_samples/
+|-- Picture/
+|   |-- fig1.png
+|   |-- fig2.png
+|   `-- fig3.png
+|-- results/
+|-- docs/
+|   `-- REPRODUCIBILITY.md
+|-- requirements.txt
+|-- CITATION.cff
+|-- LICENSE
+`-- README.md
 ```
 
-## 7. Reproducing the Experiments
+## 8. Reproducing the Experiments
 
 Detailed reproduction instructions are provided in [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md), including environment setup, main commands, auxiliary scripts, input and output directories, and random-seed settings.
 
-## 8. License
+## 9. License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
