@@ -14,12 +14,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-# === 设备设置 ===
+# === device setup ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# === 归一化配置 ===
-# 根据新的变量范围更新
+# ===  ===
+# 
 MIN_X = 1
 MAX_X = 100
 MIN_Y = 1
@@ -27,7 +27,7 @@ MAX_Y = 100
 MIN_Z = 1
 MAX_Z = 60
 
-# 天气和时间段范围
+# 
 MIN_WEATHER = 1
 MAX_WEATHER = 6
 MIN_TIMEPERIOD = 1
@@ -35,7 +35,7 @@ MAX_TIMEPERIOD = 6
 
 
 def normalize_state(state):
-    """将状态归一化到[0,1]"""
+    """[0,1]"""
     x, y, z = state
     normalized_x = (x - MIN_X) / (MAX_X - MIN_X)
     normalized_y = (y - MIN_Y) / (MAX_Y - MIN_Y)
@@ -44,7 +44,7 @@ def normalize_state(state):
 
 
 def denormalize_state(normalized_state):
-    """将归一化状态还原到原始范围"""
+    """"""
     norm_x, norm_y, norm_z = normalized_state
     x = int(norm_x * (MAX_X - MIN_X) + MIN_X)
     y = int(norm_y * (MAX_Y - MIN_Y) + MIN_Y)
@@ -52,7 +52,7 @@ def denormalize_state(normalized_state):
     return [x, y, z]
 
 
-# === 简化的奖励函数 ===
+# === reward function ===
 def compute_reward(state, target_path, triggered, prev_triggered=None, prev_state=None):
     sim = jaccard_similarity(triggered, target_path)
     reward = sim * 10
@@ -62,14 +62,14 @@ def compute_reward(state, target_path, triggered, prev_triggered=None, prev_stat
 
 
 def execute_validation_rules_block4(weather, time_period, z):
-    """验证规则函数 - weather, time_period, z组合"""
+    """ - weather, time_period, z"""
     triggered = set()
 
-    # 将z映射到合适的范围以匹配条件逻辑
-    x = z  # 直接使用z作为x
-    y = (weather * time_period * 10 + z) % 100 + 1  # 基于输入参数计算y值
+    # z
+    x = z  # zx
+    y = (weather * time_period * 10 + z) % 100 + 1  # y
 
-    # 1-7: 早高峰组合（time_period == 1）
+    # 1-7: (time_period == 1)
     if time_period == 1:
         if x < 60 and y > 75:
             triggered.add(1)
@@ -86,7 +86,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if 50 < x < 75 and y < 55:
             triggered.add(7)
 
-    # 8-14: 晚高峰组合（time_period == 2）
+    # 8-14: (time_period == 2)
     if time_period == 2:
         if x < 60 and y > 75:
             triggered.add(8)
@@ -103,7 +103,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if x < 50 and 55 < y < 75:
             triggered.add(14)
 
-    # 15-19: 午餐时间组合（time_period == 3）
+    # 15-19: (time_period == 3)
     if time_period == 3:
         if x > 60 and 40 < y < 65:
             triggered.add(15)
@@ -116,7 +116,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if x > 65 and y < 45:
             triggered.add(19)
 
-    # 20-25: 夜间组合（time_period == 4）
+    # 20-25: (time_period == 4)
     if time_period == 4:
         if x < 45 and y < 35:
             triggered.add(20)
@@ -131,7 +131,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if 40 < x < 65 and y < 45:
             triggered.add(25)
 
-    # 26-28: 周末组合（time_period == 5）
+    # 26-28: (time_period == 5)
     if time_period == 5:
         if x < 60 and y < 50:
             triggered.add(26)
@@ -140,7 +140,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if x > 60 and y < 45:
             triggered.add(28)
 
-    # 29-33: 假日组合（time_period == 6）
+    # 29-33: (time_period == 6)
     if time_period == 6:
         if 40 < x < 70 and 40 < y < 60:
             triggered.add(29)
@@ -153,8 +153,8 @@ def execute_validation_rules_block4(weather, time_period, z):
         if x > 65 and y > 75:
             triggered.add(33)
 
-    # 34-68: 天气相关扩展规则
-    if weather == 1:  # 晴天
+    # 34-68: 
+    if weather == 1:  # 
         if time_period in [1, 2] and x > 70:
             triggered.add(34)
         if time_period in [1, 2] and y > 70:
@@ -168,7 +168,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [5, 6] and 40 < y < 80:
             triggered.add(39)
 
-    if weather == 2:  # 雨天
+    if weather == 2:  # 
         if time_period in [1, 2] and x > 75:
             triggered.add(40)
         if time_period in [1, 2] and y < 60:
@@ -182,7 +182,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [5, 6] and 35 < y < 75:
             triggered.add(45)
 
-    if weather == 3:  # 雾天
+    if weather == 3:  # 
         if time_period in [1, 2] and x > 60:
             triggered.add(46)
         if time_period in [1, 2] and y > 65:
@@ -196,7 +196,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [5, 6] and 30 < y < 70:
             triggered.add(51)
 
-    if weather == 4:  # 雪天
+    if weather == 4:  # 
         if time_period in [1, 2] and x > 65:
             triggered.add(52)
         if time_period in [1, 2] and y < 55:
@@ -210,7 +210,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [5, 6] and 25 < y < 65:
             triggered.add(57)
 
-    if weather == 5:  # 风天
+    if weather == 5:  # 
         if time_period in [1, 2] and x > 70:
             triggered.add(58)
         if time_period in [1, 2] and y > 60:
@@ -224,7 +224,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [5, 6] and 20 < y < 60:
             triggered.add(63)
 
-    if weather == 6:  # 暴雨
+    if weather == 6:  # 
         if time_period in [1, 2] and x > 55:
             triggered.add(64)
         if time_period in [1, 2] and y > 55:
@@ -236,7 +236,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [5, 6] and 15 < x < 55:
             triggered.add(68)
 
-    # 69-78: 复合条件（多参数组合）
+    # 69-78: ()
     if weather + time_period > 6:
         if x > 50 and y > 50:
             triggered.add(69)
@@ -261,8 +261,8 @@ def execute_validation_rules_block4(weather, time_period, z):
         if abs(x - y) > 30:
             triggered.add(78)
 
-    # 79-88: 数值关系条件
-    if weather % 2 == time_period % 2:  # 同奇偶性
+    # 79-88: Value
+    if weather % 2 == time_period % 2:  # 
         if x % 10 < 5:
             triggered.add(79)
         if y % 10 >= 5:
@@ -274,7 +274,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if x // 10 == y // 10:
             triggered.add(83)
 
-    if weather % 2 != time_period % 2:  # 不同奇偶性
+    if weather % 2 != time_period % 2:  # 
         if x > 75 or y > 75:
             triggered.add(84)
         if x < 25 or y < 25:
@@ -286,8 +286,8 @@ def execute_validation_rules_block4(weather, time_period, z):
         if weather * time_period > 15:
             triggered.add(88)
 
-    # 89-95: 高级组合条件（奇数天气）
-    if weather in [1, 3, 5]:  # 奇数天气
+    # 89-95: ()
+    if weather in [1, 3, 5]:  # 
         if time_period in [1, 3, 5] and x > 40:
             triggered.add(89)
         if time_period in [2, 4, 6] and y > 40:
@@ -303,8 +303,8 @@ def execute_validation_rules_block4(weather, time_period, z):
         if time_period in [2, 4, 6] and y < 60:
             triggered.add(95)
 
-    # 96-98: 偶数天气条件
-    if weather in [2, 4, 6]:  # 偶数天气
+    # 96-98: 
+    if weather in [2, 4, 6]:  # 
         if (x + y) % weather == 0:
             triggered.add(96)
         if x * weather > 100:
@@ -312,7 +312,7 @@ def execute_validation_rules_block4(weather, time_period, z):
         if y * time_period > 100:
             triggered.add(98)
 
-    # 99-100: 最后的复杂条件
+    # 99-100: 
     if (weather * time_period + z) % 7 == 0:
         triggered.add(99)
     if max(weather, time_period) * min(x, y) > 150:
@@ -322,11 +322,11 @@ def execute_validation_rules_block4(weather, time_period, z):
 
 
 def execute_Tr(weather, time_period, z):
-    """执行验证规则的包装函数"""
+    """"""
     return execute_validation_rules_block4(weather, time_period, z)
 
 
-# === 目标路径定义 ===
+# === target path definitions ===
 target_paths = [
     [15, 16, 48, 49, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 89, 91, 92, 93, 94, 99, 100],
     [16, 18, 19, 60, 61, 70, 71, 72, 73, 80, 81, 82, 83, 89, 91, 92, 93, 94, 99, 100],
@@ -365,7 +365,7 @@ target_paths = [
     [23, 25, 60, 61, 71, 72, 73, 84, 85, 86, 87, 88, 90, 92, 93, 95, 100]
 ]
 
-# 转换为集合
+# 
 target_paths = [set(path) for path in target_paths]
 
 
@@ -377,7 +377,7 @@ def jaccard_similarity(set1, set2):
     return intersection / union if union != 0 else 0.0
 
 
-# === 路径相似度矩阵计算和自动分组算法 ===
+# === Path Similarity ===
 def compute_path_similarity_matrix(paths):
     n = len(paths)
     matrix = np.zeros((n, n))
@@ -404,7 +404,7 @@ def group_paths_by_similarity(paths):
     return similar_group, isolated_group
 
 
-# === 优化的样本生成（分组差异化筛选）===
+# === Sample generation(screening)===
 def compute_robustness(state, path):
     base = execute_Tr(state[0], state[1], state[2])
     if not base:
@@ -417,7 +417,7 @@ def compute_robustness(state, path):
                 if dx == dy == dz == 0:
                     continue
                 neighbor = [state[0] + dx, state[1] + dy, state[2] + dz]
-                # 确保邻居状态在有效范围内
+                # 
                 neighbor[0] = max(MIN_X, min(MAX_X, neighbor[0]))
                 neighbor[1] = max(MIN_Y, min(MAX_Y, neighbor[1]))
                 neighbor[2] = max(MIN_Z, min(MAX_Z, neighbor[2]))
@@ -431,12 +431,12 @@ def compute_robustness(state, path):
 
 
 def compute_q_value_score(state, similar_model):
-    """保持原始Q值逻辑：返回1-归一化Q值"""
+    """Q: 1-Q"""
     if similar_model is None:
         return 0.0
 
     try:
-        # 归一化状态后输入模型
+        # 
         normalized_state = normalize_state(state)
         state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -450,7 +450,7 @@ def compute_q_value_score(state, similar_model):
 
 
 def generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k=200, run_id=1):
-    """为相似路径组生成样本（使用3个标准）"""
+    """Similar path group(3)"""
     SIMILAR_WEIGHTS = [0.55, 0.39, 0.06]
 
     def save_samples(path_id, samples, base_dir):
@@ -464,7 +464,7 @@ def generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k
                 f.write(
                     f"{weather} {time_period} {z}\t{s['score']:.4f}\t{s['similarity']:.4f}\t{s['length_diff']:.4f}\t{s['robustness']:.4f}\n")
 
-    base_dir = r"D:\实验\CNN\DQNNEW\path_samples_grouped"
+    base_dir = r"D:\Experiment\CNN\DQNNEW\path_samples_grouped"
 
     for path_idx in similar_group:
         path = target_paths[path_idx]
@@ -474,7 +474,7 @@ def generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k
 
         while len(candidate_samples) < num_candidates and attempts < num_candidates * 10:
             attempts += 1
-            # 根据新的变量范围生成随机状态
+            # 
             weather = np.random.randint(MIN_WEATHER, MAX_WEATHER + 1)
             time_period = np.random.randint(MIN_TIMEPERIOD, MAX_TIMEPERIOD + 1)
             z = np.random.randint(MIN_Z, MAX_Z + 1)
@@ -509,7 +509,7 @@ def generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k
 
 
 def generate_samples_for_isolated_paths(isolated_group, similar_model, num_candidates=2000, top_k=200, run_id=1):
-    """为孤立路径组生成样本（使用4个标准，包括Q值预测）"""
+    """Path (4, Q)"""
     ISOLATED_WEIGHTS = [0.18, 0.21, 0.32, 0.29]
 
     def save_samples(path_id, samples, base_dir):
@@ -523,7 +523,7 @@ def generate_samples_for_isolated_paths(isolated_group, similar_model, num_candi
                 f.write(
                     f"{weather} {time_period} {z}\t{s['score']:.4f}\t{s['similarity']:.4f}\t{s['length_diff']:.4f}\t{s['robustness']:.4f}\t{s['q_value_score']:.4f}\n")
 
-    base_dir = r"D:\实验\CNN\DQNNEW\path_samples_grouped"
+    base_dir = r"D:\Experiment\CNN\DQNNEW\path_samples_grouped"
 
     for path_idx in isolated_group:
         path = target_paths[path_idx]
@@ -533,7 +533,7 @@ def generate_samples_for_isolated_paths(isolated_group, similar_model, num_candi
 
         while len(candidate_samples) < num_candidates and attempts < num_candidates * 10:
             attempts += 1
-            # 根据新的变量范围生成随机状态
+            # 
             weather = np.random.randint(MIN_WEATHER, MAX_WEATHER + 1)
             time_period = np.random.randint(MIN_TIMEPERIOD, MAX_TIMEPERIOD + 1)
             z = np.random.randint(MIN_Z, MAX_Z + 1)
@@ -570,7 +570,7 @@ def generate_samples_for_isolated_paths(isolated_group, similar_model, num_candi
             save_samples(path_id=path_id, samples=selected_samples, base_dir=base_dir)
 
 
-# === 组别经验回放池（修改为支持不重复抽取）===
+# === ()===
 class GroupExperienceReplay:
     def __init__(self, capacity=20000):
         self.capacity = capacity
@@ -582,11 +582,11 @@ class GroupExperienceReplay:
         self.priorities.append(experience[-1])
 
     def sample(self, batch_size, alpha=0.6):
-        """不重复抽样"""
+        """"""
         priorities = np.array(self.priorities) ** alpha
         probabilities = priorities / np.sum(priorities)
 
-        # 不重复抽样
+        # 
         batch_size = min(batch_size, len(self.buffer))
         batch_indices = np.random.choice(len(self.buffer), batch_size, replace=False, p=probabilities)
         batch = [self.buffer[idx] for idx in batch_indices]
@@ -601,20 +601,20 @@ class GroupExperienceReplay:
         return len(self.buffer)
 
     def get_high_reward_samples(self, target_path, num_samples=20):
-        """获取高奖励样本（不重复）"""
+        """()"""
         if len(self.buffer) == 0:
             return []
 
         samples_with_recalculated_scores = []
-        seen_states = set()  # 用于去重
+        seen_states = set()  # 
 
         for experience in self.buffer:
             state_tensor = experience[0]
-            # 还原归一化状态
+            # 
             normalized_state = state_tensor.cpu().numpy().flatten()
             state_tuple = tuple(denormalize_state(normalized_state))
 
-            # 去重检查
+            # 
             if state_tuple in seen_states:
                 continue
             seen_states.add(state_tuple)
@@ -639,7 +639,7 @@ def load_path_data(file_path):
     return path_data
 
 
-# === DQN网络 ===
+# === DQN ===
 class DQN(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(DQN, self).__init__()
@@ -653,7 +653,7 @@ class DQN(nn.Module):
         return self.fc3(x)
 
 
-# === DQN Agent（修改为使用归一化）===
+# === DQN Agent()===
 class DQNAgentWithPER:
     def __init__(self, state_dim, action_dim, replay_buffer, gamma=0.99, epsilon=1.0, epsilon_decay=0.995,
                  epsilon_min=0.1, learning_rate=0.001, alpha=0.6, beta=0.4):
@@ -686,7 +686,7 @@ class DQNAgentWithPER:
             return (0, 0, delta)
 
     def act(self, state):
-        """使用归一化状态进行决策"""
+        """"""
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
 
@@ -697,7 +697,7 @@ class DQNAgentWithPER:
         return torch.argmax(q_values, dim=1).item()
 
     def store_transition(self, state, action, reward, next_state, done):
-        """存储时使用归一化状态"""
+        """"""
         normalized_state = normalize_state(state)
         normalized_next_state = normalize_state(next_state)
 
@@ -753,18 +753,18 @@ class DQNAgentWithPER:
         self.target_model.load_state_dict(self.model.state_dict())
 
 
-# === 修改后的训练函数 ===
+# ===  ===
 def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group_name=""):
-    """训练指定组的路径 - 按新流程：4批次×50样本×3步×5轮重复"""
+    """Path  - : 4x50x3x5"""
     state_dim = 3
-    action_dim = 24  # 3维 × 8个delta值
+    action_dim = 24  # 3 x 8delta
 
     agent = DQNAgentWithPER(state_dim, action_dim, replay_buffer)
 
     global_steps = 0
     path_rewards = {}
 
-    print(f"开始训练{group_name}，包含路径: {[idx + 1 for idx in group_paths]}")
+    print(f"Start training{group_name}, Included Paths: {[idx + 1 for idx in group_paths]}")
     start_time = time.time()
 
     N_SAMPLES = 200
@@ -776,9 +776,9 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
 
     for path_idx in group_paths:
         file_path = os.path.join(path_documents,
-                                 f"path{path_idx + 1}_{'similar' if group_name == '相似组' else 'isolated'}.txt")
+                                 f"path{path_idx + 1}_{'similar' if group_name == '' else 'isolated'}.txt")
         if not os.path.exists(file_path):
-            print(f"  警告: 路径{path_idx + 1}的样本文件不存在，跳过")
+            print(f"  : Path {path_idx + 1}, ")
             continue
 
         path_data = load_path_data(file_path)
@@ -787,10 +787,10 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
         if path_idx not in path_rewards:
             path_rewards[path_idx] = 0
 
-        print(f"\n  开始训练路径{path_idx + 1}，样本数: {len(path_data)}")
+        print(f"\n  Start training path {path_idx + 1}, : {len(path_data)}")
 
         for repeat in range(N_REPEATS):
-            print(f"    第{repeat + 1}/{N_REPEATS}轮重复训练")
+            print(f"    Run {repeat + 1}/{N_REPEATS}")
 
             batch_count = 0
 
@@ -799,10 +799,10 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
                 batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES)
 
                 if batch_start >= len(path_data):
-                    print(f"      第{batch_idx + 1}批: 样本不足，跳过")
+                    print(f"      Run {batch_idx + 1}: , ")
                     break
 
-                print(f"      第{batch_idx + 1}/{N_BATCHES}批 (样本 {batch_start}-{batch_end})")
+                print(f"      Run {batch_idx + 1}/{N_BATCHES} ( {batch_start}-{batch_end})")
 
                 for sample_idx in range(batch_start, batch_end):
                     if sample_idx >= len(path_data):
@@ -817,7 +817,7 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
                         for a in range(agent.action_dim):
                             dw, dt, dz = agent.decode_action(a)
                             cand_next = (state[0] + dw, state[1] + dt, state[2] + dz)
-                            # 检查新状态是否在有效范围内
+                            # 
                             if (MIN_WEATHER <= cand_next[0] <= MAX_WEATHER and
                                     MIN_TIMEPERIOD <= cand_next[1] <= MAX_TIMEPERIOD and
                                     MIN_Z <= cand_next[2] <= MAX_Z):
@@ -853,7 +853,7 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
                         path_rewards[path_idx] += reward
                         global_steps += 1
 
-                print(f"        批次{batch_idx + 1}完成，开始回放训练（更新策略网络参数）...")
+                print(f"        {batch_idx + 1}completed, ()...")
                 if len(agent.replay_buffer) >= batch_size:
                     agent.train(batch_size)
 
@@ -861,61 +861,61 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
 
                 if batch_count % TARGET_UPDATE_EVERY_N_BATCHES == 0:
                     agent.update_target_model()
-                    print(f"        已完成{batch_count}批，更新目标网络参数")
+                    print(f"        completed{batch_count}, ")
 
-        print(f"  路径{path_idx + 1}训练完成，累积奖励: {path_rewards[path_idx]:.2f}")
+        print(f"  Path {path_idx + 1}completed, : {path_rewards[path_idx]:.2f}")
 
     training_time = time.time() - start_time
-    print(f"\n{group_name}训练完成，用时: {training_time:.2f}秒")
-    print(f"经验池大小: {len(replay_buffer)}")
+    print(f"\n{group_name}completed, : {training_time:.2f} seconds")
+    print(f": {len(replay_buffer)}")
 
     return agent, path_rewards, training_time
 
 
-# === 分阶段训练流程 ===
+# ===  ===
 def generate_and_train_grouped_paths_staged(path_documents, similar_group, isolated_group, batch_size=32, run_id=1):
-    """分阶段训练：先训练相似组，再用相似组模型为孤立组生成样本，最后训练孤立组"""
+    """: , , """
 
-    print(f"\n=== 运行 {run_id}/20 分阶段训练开始 ===")
+    print(f"\n===  {run_id}/20  ===")
     similar_group_paths = [idx + 1 for idx in similar_group]
     isolated_group_paths = [idx + 1 for idx in isolated_group]
 
-    print(f"相似组路径: {similar_group_paths}")
-    print(f"孤立组路径: {isolated_group_paths}")
+    print(f"Path : {similar_group_paths}")
+    print(f"Path : {isolated_group_paths}")
 
     total_start_time = time.time()
 
-    print(f"\n[阶段1] 为相似组生成样本...")
+    print(f"\n[1] ...")
     generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k=200, run_id=run_id)
 
-    print(f"\n[阶段2] 训练相似组...")
+    print(f"\n[2] ...")
     similar_replay_buffer = GroupExperienceReplay(capacity=20000)
     similar_agent, similar_path_rewards, similar_training_time = train_group(
-        similar_group, path_documents, similar_replay_buffer, batch_size=batch_size, group_name="相似组"
+        similar_group, path_documents, similar_replay_buffer, batch_size=batch_size, group_name=""
     )
 
-    print(f"\n[阶段3] 使用相似组模型为孤立组生成样本...")
+    print(f"\n[3] ...")
     generate_samples_for_isolated_paths(isolated_group, similar_agent.model, num_candidates=2000, top_k=200,
                                         run_id=run_id)
 
-    print(f"\n[阶段4] 训练孤立组...")
+    print(f"\n[4] ...")
     isolated_replay_buffer = GroupExperienceReplay(capacity=20000)
     isolated_agent, isolated_path_rewards, isolated_training_time = train_group(
-        isolated_group, path_documents, isolated_replay_buffer, batch_size=batch_size, group_name="孤立组"
+        isolated_group, path_documents, isolated_replay_buffer, batch_size=batch_size, group_name=""
     )
 
     total_path_rewards = {**similar_path_rewards, **isolated_path_rewards}
     total_cumulative_reward = sum(total_path_rewards.values())
     total_training_time = time.time() - total_start_time
 
-    print(f"\n=== 运行 {run_id}/20 分阶段训练完成，总用时: {total_training_time:.2f}秒 ===")
+    print(f"\n===  {run_id}/20 completed, : {total_training_time:.2f} seconds ===")
 
     return similar_agent, isolated_agent, similar_replay_buffer, isolated_replay_buffer, total_cumulative_reward, total_path_rewards, total_training_time
 
 
-# 创建Excel报告
+# Excel
 def create_consolidated_excel_report(all_runs_data, similar_group, isolated_group, output_dir):
-    """创建包含20次运行数据的Excel报告"""
+    """20 runExcel"""
     os.makedirs(output_dir, exist_ok=True)
 
     similar_group_paths = [idx + 1 for idx in similar_group]
@@ -935,12 +935,12 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     isolated_group_color = "FCE4D6"
     stats_color = "FFF2CC"
 
-    # === 工作表1: 各路径详细表现 ===
+    # === 1: Path  ===
     ws_paths = wb.active
-    ws_paths.title = "各路径详细表现"
+    ws_paths.title = "Path "
 
-    path_headers = ['路径编号', '分组类型'] + [f'第{i}次' for i in range(1, 21)] + ['平均相似度', '最高相似度',
-                                                                                    '最低相似度', '标准差']
+    path_headers = ['Path ID', ''] + [f'Run {i}' for i in range(1, 21)] + ['Average Similarity', 'Maximum Similarity',
+                                                                                    'Minimum Similarity', 'Standard deviation']
     for col, header in enumerate(path_headers, 1):
         cell = ws_paths.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, size=11, color="FFFFFF")
@@ -954,16 +954,16 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
         row = path_id + 1
 
         if path_id in similar_group_paths:
-            group_type = "高关联度路径组"
+            group_type = "High-correlation path group"
             row_color = similar_group_color
         elif path_id in isolated_group_paths:
-            group_type = "低关联度路径组"
+            group_type = "Low-correlation path group"
             row_color = isolated_group_color
         else:
-            group_type = "未分组"
+            group_type = "Ungrouped"
             row_color = "FFFFFF"
 
-        cell = ws_paths.cell(row=row, column=1, value=f"路径{path_id}")
+        cell = ws_paths.cell(row=row, column=1, value=f"Path {path_id}")
         cell.font = Font(bold=True, size=10)
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = PatternFill(start_color=row_color, end_color=row_color, fill_type="solid")
@@ -1006,10 +1006,10 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     for col in range(23, 27):
         ws_paths.column_dimensions[get_column_letter(col)].width = 13
 
-    # === 工作表2: 分组统计 ===
-    ws_groups = wb.create_sheet("分组统计")
+    # === 2:  ===
+    ws_groups = wb.create_sheet("")
 
-    group_headers = ['分组名称', '包含路径'] + [f'第{i}次' for i in range(1, 21)] + ['平均相似度', '标准差']
+    group_headers = ['Group Name', 'Included Paths'] + [f'Run {i}' for i in range(1, 21)] + ['Average Similarity', 'Standard deviation']
     for col, header in enumerate(group_headers, 1):
         cell = ws_groups.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, size=11, color="FFFFFF")
@@ -1021,7 +1021,7 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
 
     row = 2
 
-    cell = ws_groups.cell(row=row, column=1, value="高关联度路径组")
+    cell = ws_groups.cell(row=row, column=1, value="High-correlation path group")
     cell.font = Font(bold=True, size=11)
     cell.alignment = Alignment(horizontal="center", vertical="center")
     cell.fill = PatternFill(start_color=similar_group_color, end_color=similar_group_color, fill_type="solid")
@@ -1060,7 +1060,7 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     row += 1
 
     if isolated_group_paths:
-        cell = ws_groups.cell(row=row, column=1, value="低关联度路径组")
+        cell = ws_groups.cell(row=row, column=1, value="Low-correlation path group")
         cell.font = Font(bold=True, size=11)
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = PatternFill(start_color=isolated_group_color, end_color=isolated_group_color, fill_type="solid")
@@ -1103,10 +1103,10 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     ws_groups.column_dimensions[get_column_letter(23)].width = 14
     ws_groups.column_dimensions[get_column_letter(24)].width = 12
 
-    # === 工作表3: 详细样本数据 ===
-    ws_samples = wb.create_sheet("详细样本数据")
+    # === 3: Detailed Sample Data ===
+    ws_samples = wb.create_sheet("Detailed Sample Data")
 
-    sample_headers = ['运行次数', '路径编号', '样本序号', 'Weather', 'TimePeriod', 'Z', '相似度', '触发规则集合']
+    sample_headers = ['Run', 'Path ID', 'Sample ID', 'Weather', 'TimePeriod', 'Z', 'Similarity', 'Triggered Rule Set']
     for col, header in enumerate(sample_headers, 1):
         cell = ws_samples.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, size=11, color="FFFFFF")
@@ -1132,12 +1132,12 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
                 weather, time_period, z = state_tuple
                 triggered_str = ','.join(map(str, sorted(triggered)))
 
-                cell = ws_samples.cell(row=sample_row, column=1, value=f"第{run_idx}次")
+                cell = ws_samples.cell(row=sample_row, column=1, value=f"Run {run_idx}")
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.fill = PatternFill(start_color=path_color, end_color=path_color, fill_type="solid")
                 cell.border = thin_border
 
-                cell = ws_samples.cell(row=sample_row, column=2, value=f"路径{path_id}")
+                cell = ws_samples.cell(row=sample_row, column=2, value=f"Path {path_id}")
                 cell.font = Font(bold=True)
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.fill = PatternFill(start_color=path_color, end_color=path_color, fill_type="solid")
@@ -1167,16 +1167,16 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     for i, width in enumerate(sample_widths, 1):
         ws_samples.column_dimensions[get_column_letter(i)].width = width
 
-    output_path = os.path.join(output_dir, "20次运行综合报告_交通场景.xlsx")
+    output_path = os.path.join(output_dir, "20 run_.xlsx")
     wb.save(output_path)
-    print(f"\n✅ 综合Excel报告已生成: {output_path}")
+    print(f"\n Consolidated Excel report generated: {output_path}")
 
 
 def run_20_times_training():
-    """运行20次完整的训练流程（交通场景版本）"""
-    model_path_base = r"D:\实验\CNN\DQNNEW\saved_models_traffic"
-    path_documents = r"D:\实验\CNN\DQNNEW\path_samples_grouped"
-    output_dir = r"D:\实验\CNN\对比实验二\excel_reports_traffic"
+    """20()"""
+    model_path_base = r"D:\Experiment\CNN\DQNNEW\saved_models_traffic"
+    path_documents = r"D:\Experiment\CNN\DQNNEW\path_samples_grouped"
+    output_dir = r"D:\Experiment\CNN\ComparisonExperiment2\excel_reports_traffic"
 
     os.makedirs(model_path_base, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
@@ -1186,14 +1186,14 @@ def run_20_times_training():
     isolated_group_display = [idx + 1 for idx in isolated_group]
 
     print("=" * 60)
-    print("开始20次连续训练实验 - 交通场景版本")
+    print("20 - ")
     print(
-        f"变量范围: weather∈[{MIN_WEATHER},{MAX_WEATHER}], time_period∈[{MIN_TIMEPERIOD},{MAX_TIMEPERIOD}], z∈[{MIN_Z},{MAX_Z}]")
-    print("训练流程: 归一化输入 → 训练 → 抽取时还原 → 不重复抽样")
+        f": weather[{MIN_WEATHER},{MAX_WEATHER}], time_period[{MIN_TIMEPERIOD},{MAX_TIMEPERIOD}], z[{MIN_Z},{MAX_Z}]")
+    print(":  ->  ->  -> ")
     print("=" * 60)
-    print(f"\n自动分组结果:")
-    print(f"相似路径组: {similar_group_display}")
-    print(f"孤立路径组: {isolated_group_display}")
+    print(f"\nAutomatic grouping results:")
+    print(f"Similar path group: {similar_group_display}")
+    print(f"Path : {isolated_group_display}")
     print("\n" + "=" * 60)
 
     all_runs_data = []
@@ -1201,7 +1201,7 @@ def run_20_times_training():
 
     for run_id in range(1, 21):
         print(f"\n{'=' * 60}")
-        print(f"开始第 {run_id}/20 次运行")
+        print(f"Start run  {run_id}/20  run")
         print(f"{'=' * 60}")
 
         similar_agent, isolated_agent, similar_buffer, isolated_buffer, total_cumulative_reward, path_rewards, training_time = \
@@ -1243,7 +1243,7 @@ def run_20_times_training():
             'pool_capacity': 20000,
         }, isolated_model_path)
 
-        print(f"[第{run_id}次] 模型已保存（包含归一化参数）")
+        print(f"[Run {run_id}] Model saved()")
 
         run_data = {
             'run_id': run_id,
@@ -1298,30 +1298,30 @@ def run_20_times_training():
 
         all_runs_data.append(run_data)
 
-        print(f"[第{run_id}次] 完成! 总体平均相似度: {run_data['overall_avg_similarity']:.4f}")
+        print(f"[Run {run_id}] completed! Overall Average Similarity: {run_data['overall_avg_similarity']:.4f}")
         print(f"{'=' * 60}\n")
 
     total_time = time.time() - total_start_time
 
-    print("\n正在生成综合Excel报告...")
+    print("\nGenerating consolidated Excel report...")
     create_consolidated_excel_report(all_runs_data, similar_group, isolated_group, output_dir)
 
     print("\n" + "=" * 60)
-    print("20次训练全部完成! - 交通场景版本")
+    print("20All completed! - ")
     print("=" * 60)
-    print(f"变量范围:")
-    print(f"  weather (天气): [{MIN_WEATHER}, {MAX_WEATHER}]")
-    print(f"  time_period (时间段): [{MIN_TIMEPERIOD}, {MAX_TIMEPERIOD}]")
-    print(f"  z (行人数量): [{MIN_Z}, {MAX_Z}]")
-    print(f"\n总耗时: {total_time:.2f}秒 ({total_time / 60:.2f}分钟)")
-    print(f"平均每次耗时: {total_time / 20:.2f}秒")
-    print(f"\n平均相似度统计:")
+    print(f":")
+    print(f"  weather (): [{MIN_WEATHER}, {MAX_WEATHER}]")
+    print(f"  time_period (): [{MIN_TIMEPERIOD}, {MAX_TIMEPERIOD}]")
+    print(f"  z (): [{MIN_Z}, {MAX_Z}]")
+    print(f"\nTotal elapsed time: {total_time:.2f} seconds ({total_time / 60:.2f} minutes)")
+    print(f"Average elapsed time per run: {total_time / 20:.2f} seconds")
+    print(f"\nAverage similarity statistics:")
     avg_similarities = [r['overall_avg_similarity'] for r in all_runs_data]
-    print(f"  总体平均: {np.mean(avg_similarities):.4f}")
-    print(f"  最高: {np.max(avg_similarities):.4f}")
-    print(f"  最低: {np.min(avg_similarities):.4f}")
-    print(f"  标准差: {np.std(avg_similarities):.4f}")
-    print(f"\n所有结果已保存到: {output_dir}")
+    print(f"  Overall average: {np.mean(avg_similarities):.4f}")
+    print(f"  Maximum: {np.max(avg_similarities):.4f}")
+    print(f"  Minimum: {np.min(avg_similarities):.4f}")
+    print(f"  Standard deviation: {np.std(avg_similarities):.4f}")
+    print(f"\nAll results have been saved to: {output_dir}")
     print("=" * 60)
 
 

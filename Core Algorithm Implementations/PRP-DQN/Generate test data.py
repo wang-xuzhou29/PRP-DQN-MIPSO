@@ -21,7 +21,7 @@ def Tr(state: List[float]) -> Set[int]:
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
     simulated_y = current_y
 
-    # 分支 1-29 (保持原逻辑)
+    # Branch 1-29 (keep original logic)
     if abs(dx) < MIN_PLANNING_X != abs(dy) < MIN_PLANNING_X: triggered.add(1)
     if abs(dx) < MIN_PLANNING_X != abs(dz) < MIN_PLANNING_X: triggered.add(2)
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Y: triggered.add(3)
@@ -103,18 +103,18 @@ def run_scoring_per_path_separate(samples_per_path=1000, top_k=200):
     results_summary = []
 
     for tid, target_path in enumerate(targetPaths):
-        print(f"处理目标路径 {tid+1}: {sorted(target_path)}")
+        print(f"Processing target path {tid+1}: {sorted(target_path)}")
         coords = []
         path_map = {}
 
-        print(f"生成 {samples_per_path} 个样本...")
+        print(f"Generating {samples_per_path} samples...")
         for _ in range(samples_per_path):
             x,y,z = generate_input()
             coords.append((x,y,z))
             path_map[(x,y,z)] = Tr([x,y,z])
 
         rows=[]
-        print("计算评分...")
+        print("Computing scores...")
         for (x,y,z) in tqdm(coords):
             path = path_map[(x,y,z)]
             robust = average_neighbor_similarity(x,y,z,path_map)
@@ -153,13 +153,13 @@ def run_scoring_per_path_separate(samples_per_path=1000, top_k=200):
         })
 
         df_top_k.to_csv(f"path_{tid+1}_top{top_k}.csv",index=False)
-        print(f"路径{tid+1}完成: 前{top_k}个样本平均分: {avg_score:.6f}, 最高分: {max_score:.6f}, 总分: {total_score:.6f}")
+        print(f"Path {tid+1} completed: top {top_k} sample average score: {avg_score:.6f}, maximum score: {max_score:.6f}, total score: {total_score:.6f}")
 
     return results_summary
 
 if __name__ == '__main__':
-    print(f"开始生成评分样本, x/y/z取值范围: {X_MIN}-{X_MAX}")
+    print(f"Starting scored-sample generation, x/y/z value range: {X_MIN}-{X_MAX}")
     summary = run_scoring_per_path_separate(samples_per_path=1000, top_k=200)
     summary_df = pd.DataFrame(summary)
     summary_df.to_csv("paths_summary.csv",index=False)
-    print("汇总结果已保存至 paths_summary.csv")
+    print("Summary results saved to paths_summary.csv")

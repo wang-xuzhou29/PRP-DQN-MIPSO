@@ -13,11 +13,11 @@ from openpyxl.styles import Font, Alignment, PatternFill
 import os
 from datetime import datetime
 
-# 设备设置
+# device setup
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# === 统一实验配置 ===
+# ===  ===
 EXPERIMENT_CONFIG = {
     'STATE_DIM': 3,
     'ACTION_DIM': 3,
@@ -58,9 +58,9 @@ EXPERIMENT_CONFIG = {
     ],
 }
 
-# === 测试执行函数 ===
+# ===  ===
 def execute_Tr(state):
-    """执行测试函数，返回触发的路径集合"""
+    """, Path """
     if isinstance(state, (list, np.ndarray)):
         x, y, z = int(state[0]), int(state[1]), int(state[2])
     else:
@@ -104,7 +104,7 @@ def execute_Tr(state):
     if (x + y <= z) != (x - y <= z):
         triggered.add(14)
 
-    # 修正后的规则 15：安全处理除以零
+    #  15: 
     cond_xy_le_z = (x + y <= z)
     cond_x_div_y_le_z = False
     if y != 0:
@@ -176,20 +176,20 @@ def execute_Tr(state):
 
     return triggered
 
-# === 工具函数 ===
+# ===  ===
 def clip_state(state):
     return np.clip(state, EXPERIMENT_CONFIG['MIN_VALUE'], EXPERIMENT_CONFIG['MAX_VALUE'])
 
 def denormalize_state(normalized_state):
-    """将标准化状态转换回原始状态"""
+    """"""
     min_val = EXPERIMENT_CONFIG['MIN_VALUE']
     max_val = EXPERIMENT_CONFIG['MAX_VALUE']
     return normalized_state * (max_val - min_val) / 2 + (min_val + max_val) / 2
 
 def coverage_similarity(triggered, target_path):
     """
-    新的相似度计算方式：交集 / 目标路径长度
-    这就是覆盖率
+    Similarity:  / target paths
+    
     """
     if len(target_path) == 0:
         return 1.0 if len(triggered) == 0 else 0.0
@@ -210,7 +210,7 @@ def unified_reward_function(triggered, target_path):
 
     return reward
 
-# === PPO Actor网络 ===
+# === PPO Actor ===
 class PPOActor(nn.Module):
     def __init__(self, state_dim=3, action_dim=3, hidden_dim=256):
         super(PPOActor, self).__init__()
@@ -253,7 +253,7 @@ class PPOActor(nn.Module):
 
         return log_prob
 
-# === PPO Critic网络 ===
+# === PPO Critic ===
 class PPOCritic(nn.Module):
     def __init__(self, state_dim=3, hidden_dim=256):
         super(PPOCritic, self).__init__()
@@ -270,7 +270,7 @@ class PPOCritic(nn.Module):
         value = self.value_head(x)
         return value.squeeze(-1)
 
-# === PPO经验缓冲区 ===
+# === PPO ===
 class PPOBuffer:
     def __init__(self):
         self.states = []
@@ -380,7 +380,7 @@ class PPOBuffer:
     def __len__(self):
         return len(self.states)
 
-# === PPO智能体 ===
+# === PPO ===
 class PPOAgent:
     def __init__(self, state_dim=3, action_dim=3):
         self.state_dim = state_dim
@@ -450,33 +450,33 @@ class PPOAgent:
         self.buffer.clear()
 
         if self.update_count % 2 == 0:
-            print(f"  -> PPO更新完成 (第{self.update_count}次更新)")
+            print(f"  -> PPOcompleted (Run {self.update_count})")
 
-# === 核心性能指标统计函数 ===
+# === Metric ===
 def calculate_run_performance(run_idx, ppo_results, training_time, total_steps, update_count, agent):
-    """计算单次运行的全面性能指标"""
+    """ runMetric"""
     target_paths = EXPERIMENT_CONFIG['TARGET_PATHS']
     num_paths = len(target_paths)
 
-    # 1. 总奖励（Total Reward）
+    # 1. (Total Reward)
     total_reward = 0
-    # 2. 平均奖励（Average Reward）
+    # 2. (Average Reward)
     average_reward = 0
-    # 5. 收敛性（Convergence）
+    # 5. (Convergence)
     convergence = 0
-    # 12. 环境适应性（Environment Adaptability）
+    # 12. (Environment Adaptability)
     environment_adaptability = 0
-    # 13. 策略的泛化能力（Generalization Ability）
+    # 13. (Generalization Ability)
     generalization_ability = 0
-    # 15. 计算效率（Computational Efficiency）
+    # 15. (Computational Efficiency)
     computational_efficiency = 0
-    # 16. 策略更新频率（Policy Update Frequency）
+    # 16. (Policy Update Frequency)
     policy_update_frequency = 0
 
-    # 样本相似度统计
+    # Similarity
     all_similarities = []
 
-    # 计算指标
+    # Metric
     total_samples = 0
     all_rewards = []
 
@@ -493,67 +493,67 @@ def calculate_run_performance(run_idx, ppo_results, training_time, total_steps, 
             all_similarities.append(similarity)
             total_samples += 1
 
-    # 1. 总奖励
+    # 1. 
     total_reward = total_reward
 
-    # 2. 平均奖励
+    # 2. 
     if total_samples > 0:
         average_reward = total_reward / total_samples
 
-    # 5. 收敛性（平均相似度）
+    # 5. (Average Similarity)
     if all_similarities:
         convergence = np.mean(all_similarities)
 
-    # 12. 环境适应性（相似度方差）
+    # 12. (Similarity)
     if len(all_similarities) > 1:
         environment_adaptability = 1 / (np.std(all_similarities) + 1e-8)
 
-    # 13. 策略的泛化能力（平均相似度）
+    # 13. (Average Similarity)
     generalization_ability = convergence
 
-    # 15. 计算效率（步数/秒）
+    # 15. (/ seconds)
     if training_time > 0:
         computational_efficiency = total_steps / training_time
 
-    # 16. 策略更新频率
+    # 16. 
     if training_time > 0:
         policy_update_frequency = update_count / training_time
 
-    # 样本相似度统计
+    # Similarity
     avg_similarity = np.mean(all_similarities) if all_similarities else 0
     max_similarity = np.max(all_similarities) if all_similarities else 0
     min_similarity = np.min(all_similarities) if all_similarities else 0
 
     return {
-        '运行编号': run_idx + 1,
+        '': run_idx + 1,
 
-        # 保留的核心指标
-        '总奖励': round(total_reward, 2),
-        '平均奖励': round(average_reward, 4),
-        '收敛性': round(convergence, 4),
-        '环境适应性': round(environment_adaptability, 4),
-        '泛化能力': round(generalization_ability, 4),
-        '计算效率': round(computational_efficiency, 2),
-        '策略更新频率': round(policy_update_frequency, 4),
+        # Metric
+        '': round(total_reward, 2),
+        '': round(average_reward, 4),
+        '': round(convergence, 4),
+        '': round(environment_adaptability, 4),
+        '': round(generalization_ability, 4),
+        '': round(computational_efficiency, 2),
+        '': round(policy_update_frequency, 4),
 
-        # 样本相似度统计
-        '平均相似度': round(avg_similarity, 4),
-        '最大相似度': round(max_similarity, 4),
-        '最小相似度': round(min_similarity, 4),
+        # Similarity
+        'Average Similarity': round(avg_similarity, 4),
+        'Similarity': round(max_similarity, 4),
+        'Similarity': round(min_similarity, 4),
     }
 
-# === Excel导出函数 ===
-def export_to_excel(all_ppo_results, all_performance_data, target_paths, output_path="PPO测试结果_20次运行.xlsx"):
-    """导出20次运行的PPO结果到Excel"""
-    print("\n正在生成Excel报告...")
+# === Excel ===
+def export_to_excel(all_ppo_results, all_performance_data, target_paths, output_path="PPO_20 run.xlsx"):
+    """20 runPPOExcel"""
+    print("\nExcel...")
 
-    # 初始化数据列表
+    # 
     all_ppo_summary_data = []
     all_ppo_detailed_data = []
 
-    # 处理每次运行的数据
+    #  run
     for run_idx, (ppo_results, performance_data) in enumerate(zip(all_ppo_results, all_performance_data)):
-        # ===== Sheet1: PPO路径汇总统计 =====
+        # ===== Sheet1: PPOPath  =====
         ppo_summary_data = []
         for path_idx in range(len(target_paths)):
             target_path = target_paths[path_idx]
@@ -561,39 +561,39 @@ def export_to_excel(all_ppo_results, all_performance_data, target_paths, output_
 
             if len(samples) == 0:
                 ppo_summary_data.append({
-                    '运行编号': run_idx + 1,
-                    '路径编号': path_idx + 1,
-                    '目标规则数': len(target_path),
-                    '样本数量': 0,
-                    '平均相似度': 0,
-                    '最大相似度': 0,
-                    '最小相似度': 0,
-                    '相似度标准差': 0,
-                    '是否完美匹配': '否',
-                    '目标路径': ', '.join(map(str, sorted(target_path)))
+                    '': run_idx + 1,
+                    'Path ID': path_idx + 1,
+                    '': len(target_path),
+                    '': 0,
+                    'Average Similarity': 0,
+                    'Similarity': 0,
+                    'Similarity': 0,
+                    'SimilarityStandard deviation': 0,
+                    '': '',
+                    'target paths': ', '.join(map(str, sorted(target_path)))
                 })
                 continue
 
             similarities = [s['similarity'] for s in samples]
             perfect_count = sum(1 for s in similarities if abs(s - 1.0) < 0.001)
-            is_perfect = '是' if perfect_count > 0 else '否'
+            is_perfect = '' if perfect_count > 0 else ''
 
             ppo_summary_data.append({
-                '运行编号': run_idx + 1,
-                '路径编号': path_idx + 1,
-                '目标规则数': len(target_path),
-                '样本数量': len(samples),
-                '平均相似度': round(np.mean(similarities), 4),
-                '最大相似度': round(max(similarities), 4),
-                '最小相似度': round(min(similarities), 4),
-                '相似度标准差': round(np.std(similarities), 4),
-                '是否完美匹配': is_perfect,
-                '目标路径': ', '.join(map(str, sorted(target_path)))
+                '': run_idx + 1,
+                'Path ID': path_idx + 1,
+                '': len(target_path),
+                '': len(samples),
+                'Average Similarity': round(np.mean(similarities), 4),
+                'Similarity': round(max(similarities), 4),
+                'Similarity': round(min(similarities), 4),
+                'SimilarityStandard deviation': round(np.std(similarities), 4),
+                '': is_perfect,
+                'target paths': ', '.join(map(str, sorted(target_path)))
             })
 
         all_ppo_summary_data.extend(ppo_summary_data)
 
-        # ===== Sheet2: PPO详细样本数据 =====
+        # ===== Sheet2: PPODetailed Sample Data =====
         ppo_detailed_data = []
         for path_idx in range(len(target_paths)):
             target_path = target_paths[path_idx]
@@ -605,62 +605,62 @@ def export_to_excel(all_ppo_results, all_performance_data, target_paths, output_
                 triggered = sample['triggered']
 
                 ppo_detailed_data.append({
-                    '运行编号': run_idx + 1,
-                    '路径编号': path_idx + 1,
-                    '样本序号': sample_idx + 1,
-                    'X值': int(state[0]),
-                    'Y值': int(state[1]),
-                    'Z值': int(state[2]),
-                    '相似度': round(similarity, 4),
-                    '是否完美匹配': '是' if abs(similarity - 1.0) < 0.001 else '否',
-                    '目标路径': ', '.join(map(str, sorted(target_path))),
-                    '触发规则': ', '.join(map(str, sorted(triggered))),
-                    '匹配规则数': len(target_path.intersection(triggered)),
-                    '目标规则数': len(target_path)
+                    '': run_idx + 1,
+                    'Path ID': path_idx + 1,
+                    'Sample ID': sample_idx + 1,
+                    'X': int(state[0]),
+                    'Y': int(state[1]),
+                    'Z': int(state[2]),
+                    'Similarity': round(similarity, 4),
+                    '': '' if abs(similarity - 1.0) < 0.001 else '',
+                    'target paths': ', '.join(map(str, sorted(target_path))),
+                    '': ', '.join(map(str, sorted(triggered))),
+                    '': len(target_path.intersection(triggered)),
+                    '': len(target_path)
                 })
 
         all_ppo_detailed_data.extend(ppo_detailed_data)
 
-    # 创建Excel文件
+    # Excel
     ppo_summary_df = pd.DataFrame(all_ppo_summary_data)
     ppo_detailed_df = pd.DataFrame(all_ppo_detailed_data)
     performance_df = pd.DataFrame(all_performance_data)
 
     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-        # Sheet1: PPO路径汇总统计
-        ppo_summary_df.to_excel(writer, sheet_name='PPO路径汇总统计', index=False)
+        # Sheet1: PPOPath 
+        ppo_summary_df.to_excel(writer, sheet_name='PPOPath ', index=False)
 
-        # Sheet2: PPO详细样本数据
-        ppo_detailed_df.to_excel(writer, sheet_name='PPO详细样本数据', index=False)
+        # Sheet2: PPODetailed Sample Data
+        ppo_detailed_df.to_excel(writer, sheet_name='PPODetailed Sample Data', index=False)
 
-        # Sheet3: 全面性能指标统计 - 只保留指定列
+        # Sheet3: Metric - 
         selected_columns = [
-            '运行编号',
-            '总奖励', '平均奖励', '收敛性', '环境适应性',
-            '泛化能力', '计算效率', '策略更新频率',
-            '平均相似度', '最大相似度', '最小相似度'
+            '',
+            '', '', '', '',
+            '', '', '',
+            'Average Similarity', 'Similarity', 'Similarity'
         ]
         performance_df_selected = performance_df[selected_columns]
-        performance_df_selected.to_excel(writer, sheet_name='全面性能指标统计', index=False)
+        performance_df_selected.to_excel(writer, sheet_name='Metric', index=False)
 
-        # 美化样式
+        # 
         workbook = writer.book
 
-        # 通用样式
+        # 
         header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-        header_font = Font(name='微软雅黑', size=11, bold=True, color='FFFFFF')
-        perfect_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')  # 浅绿色
+        header_font = Font(name='Microsoft YaHei', size=11, bold=True, color='FFFFFF')
+        perfect_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')  # 
 
-        # === 设置Sheet1样式 ===
-        ws1 = writer.sheets['PPO路径汇总统计']
+        # === Sheet1 ===
+        ws1 = writer.sheets['PPOPath ']
         for cell in ws1[1]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        # 高亮完美匹配行
+        # 
         for row_idx in range(2, ws1.max_row + 1):
-            if ws1.cell(row_idx, 9).value == '是':  # 第9列是"是否完美匹配"
+            if ws1.cell(row_idx, 9).value == '':  # Run 9""
                 for col_idx in range(1, ws1.max_column + 1):
                     ws1.cell(row_idx, col_idx).fill = perfect_fill
 
@@ -675,8 +675,8 @@ def export_to_excel(all_ppo_results, all_performance_data, target_paths, output_
         ws1.column_dimensions['I'].width = 15
         ws1.column_dimensions['J'].width = 50
 
-        # === 设置Sheet2样式 ===
-        ws2 = writer.sheets['PPO详细样本数据']
+        # === Sheet2 ===
+        ws2 = writer.sheets['PPODetailed Sample Data']
         for cell in ws2[1]:
             cell.fill = header_fill
             cell.font = header_font
@@ -695,28 +695,28 @@ def export_to_excel(all_ppo_results, all_performance_data, target_paths, output_
         ws2.column_dimensions['K'].width = 15
         ws2.column_dimensions['L'].width = 15
 
-        # === 设置Sheet3样式 ===
-        ws3 = writer.sheets['全面性能指标统计']
+        # === Sheet3 ===
+        ws3 = writer.sheets['Metric']
         for cell in ws3[1]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        # 设置列宽
+        # 
         columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
         for col in columns:
             ws3.column_dimensions[col].width = 18
 
-    print(f"Excel报告已保存到: {output_path}")
-    print(f"  - Sheet1: PPO路径汇总统计 ({len(all_ppo_summary_data)}行)")
-    print(f"  - Sheet2: PPO详细样本数据 ({len(all_ppo_detailed_data)}行)")
-    print(f"  - Sheet3: 全面性能指标统计 ({len(all_performance_data)}行)")
+    print(f"Excel: {output_path}")
+    print(f"  - Sheet1: PPOPath  ({len(all_ppo_summary_data)})")
+    print(f"  - Sheet2: PPODetailed Sample Data ({len(all_ppo_detailed_data)})")
+    print(f"  - Sheet3: Metric ({len(all_performance_data)})")
 
-# === PPO训练流程 ===
+# === PPO ===
 def train_ppo_workflow():
     print("=" * 80)
-    print("开始PPO训练流程")
-    print("相似度计算方式: 交集 / 目标路径长度")
+    print("PPO")
+    print("Similarity:  / target paths")
     print("=" * 80)
 
     agent = PPOAgent()
@@ -726,8 +726,8 @@ def train_ppo_workflow():
     start_time = time.time()
     total_steps = 0
 
-    # 生成样本
-    print(f"\n生成样本: 每条路径{EXPERIMENT_CONFIG['SAMPLES_PER_PATH']}个")
+    # 
+    print(f"\n: Path {EXPERIMENT_CONFIG['SAMPLES_PER_PATH']}")
     path_samples = {}
     for path_idx in range(num_paths):
         samples = []
@@ -739,20 +739,20 @@ def train_ppo_workflow():
             ).astype(np.float32)
             samples.append(state)
         path_samples[path_idx] = samples
-        print(f"  路径 {path_idx + 1}/{num_paths}: 生成 {len(samples)} 个样本")
+        print(f"  Path  {path_idx + 1}/{num_paths}:  {len(samples)} ")
 
-    # 批次训练
+    # 
     batch_size = EXPERIMENT_CONFIG['BATCH_SIZE_SAMPLES']
     num_batches = EXPERIMENT_CONFIG['SAMPLES_PER_PATH'] // batch_size
 
-    print(f"\n开始批次训练: 每批{batch_size}个样本,每个样本走{EXPERIMENT_CONFIG['STEPS_PER_SAMPLE']}步")
-    print(f"总批次数: {num_batches} 批/路径 × {num_paths} 路径 = {num_batches * num_paths} 批")
+    print(f"\n: {batch_size},{EXPERIMENT_CONFIG['STEPS_PER_SAMPLE']}")
+    print(f": {num_batches} /Path  x {num_paths} Path  = {num_batches * num_paths} ")
     print("-" * 80)
 
     global_buffer = PPOBuffer()
 
     for batch_idx in range(num_batches):
-        print(f"\n批次 {batch_idx + 1}/{num_batches}")
+        print(f"\n {batch_idx + 1}/{num_batches}")
 
         for path_idx in range(num_paths):
             target_path = target_paths[path_idx]
@@ -794,114 +794,114 @@ def train_ppo_workflow():
 
             avg_reward = np.mean(batch_rewards)
             avg_similarity = np.mean(batch_similarities)
-            print(f"  路径{path_idx + 1}: 平均奖励={avg_reward:.2f}, 平均相似度={avg_similarity:.4f}")
+            print(f"  Path {path_idx + 1}: ={avg_reward:.2f}, Average Similarity={avg_similarity:.4f}")
 
-        print(f"\n  执行PPO更新...")
+        print(f"\n  PPO...")
         agent.update()
-        print(f"  全局缓冲区大小: {len(global_buffer)}")
+        print(f"  : {len(global_buffer)}")
 
     training_time = time.time() - start_time
 
     print("\n" + "=" * 80)
-    print(f"PPO训练完成! 总耗时: {training_time:.2f}秒, 总步数: {total_steps}")
-    print(f"全局缓冲区大小: {len(global_buffer)}")
-    print(f"总PPO更新次数: {agent.update_count}")
+    print(f"PPOcompleted! Total elapsed time: {training_time:.2f} seconds, : {total_steps}")
+    print(f": {len(global_buffer)}")
+    print(f"PPO: {agent.update_count}")
     print("=" * 80)
 
-    # 获取Top-K样本
-    print(f"\n从全局缓冲区中为每条路径挑选相似度最高的{EXPERIMENT_CONFIG['TOP_K_SAMPLES']}个样本...")
+    # Top-K
+    print(f"\nPath SimilarityMaximum{EXPERIMENT_CONFIG['TOP_K_SAMPLES']}...")
     ppo_top_k_results = global_buffer.get_top_k_per_path(num_paths, EXPERIMENT_CONFIG['TOP_K_SAMPLES'])
 
     return agent, ppo_top_k_results, training_time, total_steps, agent.update_count
 
-# === 主流程 ===
+# ===  ===
 def main():
     print("\n" + "=" * 80)
-    print("PPO算法测试 - 20次运行版本")
-    print("全面性能指标评估")
+    print("PPO - 20 run")
+    print("Metric")
     print("=" * 80)
 
     all_ppo_results = []
     all_performance_data = []
     target_paths = EXPERIMENT_CONFIG['TARGET_PATHS']
 
-    # 运行20次实验
+    # 20
     for run_idx in range(EXPERIMENT_CONFIG['NUM_RUNS']):
         print(f"\n{'=' * 80}")
-        print(f"开始第 {run_idx + 1}/{EXPERIMENT_CONFIG['NUM_RUNS']} 次运行")
+        print(f"Start run  {run_idx + 1}/{EXPERIMENT_CONFIG['NUM_RUNS']}  run")
         print(f"{'=' * 80}")
 
-        # PPO训练
+        # PPO
         ppo_agent, ppo_results, training_time, total_steps, update_count = train_ppo_workflow()
 
-        # 计算性能指标
+        # Metric
         performance_data = calculate_run_performance(
             run_idx, ppo_results, training_time, total_steps, update_count, ppo_agent
         )
 
-        # 保存结果
+        # 
         all_ppo_results.append(ppo_results)
         all_performance_data.append(performance_data)
 
-        print(f"\n第 {run_idx + 1} 次运行完成!")
-        print(f"  总奖励: {performance_data['总奖励']}")
-        print(f"  平均奖励: {performance_data['平均奖励']}")
-        print(f"  收敛性: {performance_data['收敛性']}")
+        print(f"\nRun  {run_idx + 1}  runcompleted!")
+        print(f"  : {performance_data['']}")
+        print(f"  : {performance_data['']}")
+        print(f"  : {performance_data['']}")
 
-    # 导出Excel结果（整合20次运行数据）
+    # Excel(20 run)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f"PPO测试结果_20次运行_{timestamp}.xlsx"
+    output_path = f"PPO_20 run_{timestamp}.xlsx"
     export_to_excel(all_ppo_results, all_performance_data, target_paths, output_path)
 
-    # 打印总体统计摘要
+    # 
     print("\n" + "=" * 80)
-    print("20次运行总体统计摘要")
+    print("20 run")
     print("=" * 80)
 
-    # 计算关键指标统计
-    total_rewards = [p['总奖励'] for p in all_performance_data]
-    average_rewards = [p['平均奖励'] for p in all_performance_data]
-    convergences = [p['收敛性'] for p in all_performance_data]
-    environment_adaptabilities = [p['环境适应性'] for p in all_performance_data]
-    generalization_abilities = [p['泛化能力'] for p in all_performance_data]
-    computational_efficiencies = [p['计算效率'] for p in all_performance_data]
-    policy_update_frequencies = [p['策略更新频率'] for p in all_performance_data]
-    avg_similarities = [p['平均相似度'] for p in all_performance_data]
+    # Metric
+    total_rewards = [p[''] for p in all_performance_data]
+    average_rewards = [p[''] for p in all_performance_data]
+    convergences = [p[''] for p in all_performance_data]
+    environment_adaptabilities = [p[''] for p in all_performance_data]
+    generalization_abilities = [p[''] for p in all_performance_data]
+    computational_efficiencies = [p[''] for p in all_performance_data]
+    policy_update_frequencies = [p[''] for p in all_performance_data]
+    avg_similarities = [p['Average Similarity'] for p in all_performance_data]
 
-    print(f"总奖励统计:")
-    print(f"  平均值: {np.mean(total_rewards):.2f}")
-    print(f"  标准差: {np.std(total_rewards):.2f}")
+    print(f":")
+    print(f"  : {np.mean(total_rewards):.2f}")
+    print(f"  Standard deviation: {np.std(total_rewards):.2f}")
 
-    print(f"\n平均奖励统计:")
-    print(f"  平均值: {np.mean(average_rewards):.4f}")
-    print(f"  标准差: {np.std(average_rewards):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(average_rewards):.4f}")
+    print(f"  Standard deviation: {np.std(average_rewards):.4f}")
 
-    print(f"\n收敛性统计:")
-    print(f"  平均值: {np.mean(convergences):.4f}")
-    print(f"  标准差: {np.std(convergences):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(convergences):.4f}")
+    print(f"  Standard deviation: {np.std(convergences):.4f}")
 
-    print(f"\n环境适应性统计:")
-    print(f"  平均值: {np.mean(environment_adaptabilities):.4f}")
-    print(f"  标准差: {np.std(environment_adaptabilities):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(environment_adaptabilities):.4f}")
+    print(f"  Standard deviation: {np.std(environment_adaptabilities):.4f}")
 
-    print(f"\n泛化能力统计:")
-    print(f"  平均值: {np.mean(generalization_abilities):.4f}")
-    print(f"  标准差: {np.std(generalization_abilities):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(generalization_abilities):.4f}")
+    print(f"  Standard deviation: {np.std(generalization_abilities):.4f}")
 
-    print(f"\n计算效率统计:")
-    print(f"  平均值: {np.mean(computational_efficiencies):.2f}")
-    print(f"  标准差: {np.std(computational_efficiencies):.2f}")
+    print(f"\n:")
+    print(f"  : {np.mean(computational_efficiencies):.2f}")
+    print(f"  Standard deviation: {np.std(computational_efficiencies):.2f}")
 
-    print(f"\n策略更新频率统计:")
-    print(f"  平均值: {np.mean(policy_update_frequencies):.4f}")
-    print(f"  标准差: {np.std(policy_update_frequencies):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(policy_update_frequencies):.4f}")
+    print(f"  Standard deviation: {np.std(policy_update_frequencies):.4f}")
 
-    print(f"\n平均相似度统计:")
-    print(f"  平均值: {np.mean(avg_similarities):.4f}")
-    print(f"  标准差: {np.std(avg_similarities):.4f}")
+    print(f"\nAverage similarity statistics:")
+    print(f"  : {np.mean(avg_similarities):.4f}")
+    print(f"  Standard deviation: {np.std(avg_similarities):.4f}")
 
     print("\n" + "=" * 80)
-    print(f"所有 {EXPERIMENT_CONFIG['NUM_RUNS']} 次优化流程完成!")
+    print(f" {EXPERIMENT_CONFIG['NUM_RUNS']} completed!")
     print("=" * 80)
 
 if __name__ == "__main__":

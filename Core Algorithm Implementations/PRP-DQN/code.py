@@ -110,7 +110,7 @@ class MetricsCollector:
         self.memory_check_count = 0
         self.step_count = 0
 
-        # === PSO阶段统计 ===
+        # === PSO stage statistics ===
         self.pso_start_time = None
         self.pso_end_time = None
         self.perfect_solutions_count = 0
@@ -175,7 +175,7 @@ class MetricsCollector:
             self.action_improvements.append(1 if improvement > 0 else 0)
 
 
-# === 奖励函数 ===
+# === reward function ===
 def compute_reward(state, target_path, triggered, prev_triggered=None, prev_state=None):
     sim = jaccard_similarity(triggered, target_path)
     reward = sim * 10
@@ -563,7 +563,7 @@ def generate_and_train_for_similar_paths(agent, similar_group, path_documents, r
             replay_count = 0
 
             for epoch in range(N_EPOCHS):
-                print(f"  路径{path_idx + 1} - 第{epoch + 1}/{N_EPOCHS}轮训练")
+                print(f"  Path {path_idx + 1} - {epoch + 1}/{N_EPOCHS} training epoch")
                 for batch_start in range(0, N_SAMPLES, BATCH_SIZE):
                     batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES)
                     for test_data_idx in range(batch_start, batch_end):
@@ -609,7 +609,7 @@ def generate_and_train_for_similar_paths(agent, similar_group, path_documents, r
                             agent.update_target_model()
 
             trained_paths.add(path_idx)
-            print(f"  路径{path_idx + 1} 训练完成\n")
+            print(f"  Path {path_idx + 1} training completed\n")
 
         if len(trained_paths) == len(similar_group):
             break
@@ -694,7 +694,7 @@ def generate_samples_for_isolated_paths(agent_similar, isolated_group_indices, n
         save_samples(path_id=path_idx + 1, samples=top_samples, base_dir=base_dir)
 
 
-# === 第二阶段增强训练函数===
+# === second-stage enhanced training function===
 def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated, similar_group, isolated_group,
                                                    path_documents, run_metrics, episodes=500, batch_size=32,
                                                    is_isolated=True):
@@ -719,7 +719,7 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
             replay_count = 0
 
             for epoch in range(N_EPOCHS):
-                print(f"  孤岛路径{path_idx + 1} - 第{epoch + 1}/{N_EPOCHS}轮训练")
+                print(f"  isolated path{path_idx + 1} - {epoch + 1}/{N_EPOCHS} training epoch")
                 for batch_start in range(0, N_SAMPLES, BATCH_SIZE):
                     batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES)
                     for test_data_idx in range(batch_start, batch_end):
@@ -767,7 +767,7 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
                             agent_isolated.update_target_model()
 
             trained_paths.add(path_idx)
-            print(f"  孤岛路径{path_idx + 1} 训练完成\n")
+            print(f"  isolated path{path_idx + 1} training completed\n")
 
         if len(trained_paths) == len(isolated_group):
             break
@@ -948,7 +948,7 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
     wb = Workbook()
 
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(name='微软雅黑', size=11, bold=True, color="FFFFFF")
+    header_font = Font(name='Microsoft YaHei', size=11, bold=True, color="FFFFFF")
     success_fill = PatternFill(start_color="C6E0B4", end_color="C6E0B4", fill_type="solid")
     fail_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
     alternate_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
@@ -964,10 +964,10 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
     left_align = Alignment(horizontal='left', vertical='center')
 
     ws1 = wb.active
-    ws1.title = "运行汇总"
+    ws1.title = "Run Summary"
     ws1.sheet_view.showGridLines = False
 
-    headers = ["运行", "成功率", "成功数量", "平均适应度", "平均迭代次数", "运行时间(s)", "DQN解决数"]
+    headers = ["Run", "Success Rate", "Success Count", "Average Fitness", "Average Iterations", "Runtime(s)", "DQN Solution Count"]
     col_widths = [12, 12, 12, 14, 14, 14, 12]
 
     for col, (header, width) in enumerate(zip(headers, col_widths), 1):
@@ -996,7 +996,7 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
         total_time = run_metrics.pso_end_time - run_metrics.pso_start_time if run_metrics.pso_end_time else 0
 
         row_data = [
-            f"运行 {run_idx}",
+            f"Run {run_idx}",
             f"{success_rate:.1f}%",
             f"{success_count}/{len(targetPaths)}",
             f"{avg_fitness:.4f}",
@@ -1014,10 +1014,10 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
             elif col == 7 and dqn_solved_count > 0:
                 cell.fill = dqn_fill
 
-    ws2 = wb.create_sheet(title="路径详情")
+    ws2 = wb.create_sheet(title="Path Details")
     ws2.sheet_view.showGridLines = False
 
-    headers2 = ["路径编号", "状态", "适应度", "迭代次数", "求解方法", "生成路径"]
+    headers2 = ["Path ID", "Status", "Fitness", "Iterations", "Solution Method", "Generated Path"]
     col_widths2 = [12, 10, 14, 14, 14, 50]
 
     for col, (header, width) in enumerate(zip(headers2, col_widths2), 1):
@@ -1043,10 +1043,10 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
             iter_val = ">Max"
 
         path_str = str(sorted(list(triggered)))
-        status = "成功" if result['perfect_match'] else "失败"
+        status = "Success" if result['perfect_match'] else "Failure"
 
         row_data = [
-            f"路径 {path_idx + 1}",
+            f"Path  {path_idx + 1}",
             status,
             f"{fitness:.4f}",
             str(iter_val),
@@ -1067,10 +1067,10 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
             if col == 5 and method == 'DQN':
                 cell.fill = dqn_fill
 
-    ws3 = wb.create_sheet(title="最佳粒子参数")
+    ws3 = wb.create_sheet(title="Best Particle Parameters")
     ws3.sheet_view.showGridLines = False
 
-    headers3 = ["路径", "最佳参数(x, y, z)", "适应度", "求解方法"]
+    headers3 = ["Path ", "Best Parameters(x, y, z)", "Fitness", "Solution Method"]
     col_widths3 = [10, 30, 12, 12]
 
     for col, (header, width) in enumerate(zip(headers3, col_widths3), 1):
@@ -1089,7 +1089,7 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
         particle_str = f"({int(best_position[0])}, {int(best_position[1])}, {int(best_position[2])})"
 
         row_data = [
-            f"路径{path_idx + 1}",
+            f"Path {path_idx + 1}",
             particle_str,
             f"{fitness:.4f}",
             method
@@ -1108,7 +1108,7 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
     wb.save(filepath)
 
     print(f"\n{'=' * 70}")
-    print(f"✓ 结果已导出到: {filepath}")
+    print(f" Results exported to: {filepath}")
     print(f"{'=' * 70}\n")
 
     return filepath
@@ -1116,7 +1116,7 @@ def export_run_to_excel(all_run_results, all_run_metrics, filename=None):
 
 def run_single_experiment(run_num, similar_group, isolated_group):
     print(f"\n{'=' * 100}")
-    print(f"开始执行实验...")
+    print(f"Starting experiment...")
     print(f"{'=' * 100}")
 
     run_metrics = MetricsCollector()
@@ -1124,8 +1124,8 @@ def run_single_experiment(run_num, similar_group, isolated_group):
 
     path_documents = os.path.join(os.getcwd(), "../../path_samples")
 
-    # 始终生成样本数据，因为现在是单次运行
-    print("生成相似路径样本数据...")
+    # Always generate sample data because this is now a single-run workflow
+    print("Generating similar-path sample data...")
     generate_samples_for_similar_paths(similar_group, num_total=2000, top_k=200)
 
     replay_buffer = SharedExperienceReplay(capacity=10000)
@@ -1133,14 +1133,14 @@ def run_single_experiment(run_num, similar_group, isolated_group):
     action_dim = 30
     agent = DQNAgentWithPER(state_dim, action_dim, replay_buffer)
 
-    print(f"阶段一：相似路径训练")
+    print(f"Stage 1: similar-path training")
     generate_and_train_for_similar_paths(agent, similar_group, path_documents, run_metrics, episodes=500, batch_size=32,
                                          is_isolated=False)
 
-    print("生成孤岛路径增强样本...")
+    print("Generating enhanced isolated-path samples...")
     generate_samples_for_isolated_paths(agent, isolated_group, num_total=2000, top_k=200)
 
-    print(f"阶段二：增强版孤岛路径训练")
+    print(f"Stage 2: enhanced isolated-path training")
     isolated_replay_buffer = SharedExperienceReplay(capacity=15000)
     agent_isolated = DQNAgentWithPER(state_dim, action_dim, isolated_replay_buffer)
 
@@ -1161,7 +1161,7 @@ def run_single_experiment(run_num, similar_group, isolated_group):
 
     run_metrics.end_training()
 
-    # 从经验池提取最终样本
+    # Extract final samples from the replay buffer
     dqn_best_samples = {}
 
     for path_idx in similar_group:
@@ -1178,8 +1178,8 @@ def run_single_experiment(run_num, similar_group, isolated_group):
         for state_tuple, _, sim, triggered in high_reward_samples:
             run_metrics.record_final_output_sample(triggered, target_path)
 
-    # PSO优化阶段
-    print(f"阶段三：PSO优化")
+    # PSO optimization stage
+    print(f"Stage 3: PSO optimization")
     run_metrics.start_pso_phase()
 
     max_iterations = 3000
@@ -1215,7 +1215,7 @@ def run_single_experiment(run_num, similar_group, isolated_group):
             })
             run_metrics.record_pso_result(1.0, True, convergence_iter=0, path_id=i + 1,
                                           method='DQN', reset_count=0, execution_time=path_execution_time)
-            status = "✓完美(DQN)"
+            status = "perfect(DQN)"
         else:
             pso = PSO(target_path, swarm_size=20, dqn_samples=dqn_samples_for_path)
 
@@ -1257,9 +1257,9 @@ def run_single_experiment(run_num, similar_group, isolated_group):
                 execution_time=path_execution_time
             )
 
-            status = "✓完美(PSO)" if is_perfect else f"○部分({pso.global_best_fitness:.3f})"
+            status = "perfect(PSO)" if is_perfect else f"partial({pso.global_best_fitness:.3f})"
 
-        print(f"  路径{i + 1}: {status} | 耗时 {path_execution_time:.2f}s")
+        print(f"  Path {i + 1}: {status} | elapsed time {path_execution_time:.2f}s")
 
     run_metrics.end_pso_phase()
 
@@ -1267,29 +1267,29 @@ def run_single_experiment(run_num, similar_group, isolated_group):
     success_rate = (success_count / len(targetPaths)) * 100
     pso_time = run_metrics.pso_end_time - run_metrics.pso_start_time
 
-    print(f"\n实验完成: 成功率 {success_rate:.1f}% ({success_count}/{len(targetPaths)}) | "
-          f"PSO耗时 {pso_time:.2f}秒")
+    print(f"\nExperiment completed: Success Rate {success_rate:.1f}% ({success_count}/{len(targetPaths)}) | "
+          f"PSO elapsed time {pso_time:.2f} seconds")
 
     return pso_results, run_metrics
 
 
 if __name__ == "__main__":
     print("=" * 100)
-    print("DQN-PSO算法 - 单次独立运行系统")
+    print("DQN-PSOalgorithm - single-run system")
     print("=" * 100)
-    print(f"路径范围：路径1 - 路径{len(targetPaths)}")
+    print(f"Path range: Path 1 - Path {len(targetPaths)}")
     print("=" * 100)
 
-    print("\n初始化...")
+    print("\nInitializing...")
     similar_group, isolated_group = group_paths_by_similarity(targetPaths)
-    print(f"相似路径组: {[i + 1 for i in similar_group]}")
-    print(f"孤岛路径组: {[i + 1 for i in isolated_group]}")
+    print(f"Similar path group: {[i + 1 for i in similar_group]}")
+    print(f"Isolated path group: {[i + 1 for i in isolated_group]}")
 
     results, metrics = run_single_experiment(1, similar_group, isolated_group)
 
-    print("\n正在导出结果到Excel...")
+    print("\nExporting results to Excel...")
     excel_filename = export_run_to_excel([results], [metrics])
 
-    print(f"\n程序执行完成!")
-    print(f"Excel文件: {excel_filename}")
+    print(f"\nProgram completed!")
+    print(f"Excel file: {excel_filename}")
     print("=" * 100)

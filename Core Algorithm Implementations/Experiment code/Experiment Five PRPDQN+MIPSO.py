@@ -13,13 +13,13 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import sys
 
-NUM_RUNS = 20  # 实验运行次数，可以在这里修改
+NUM_RUNS = 20  # Experiment Runs, 
 
-# === 设备设置 ===
+# === device setup ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# === 新的三维范围设置 ===
+# === new three-dimensional range settings ===
 LIGHT_MIN = 1
 LIGHT_MAX = 50
 MOISTURE_MIN = 1
@@ -28,26 +28,26 @@ TEMP_MIN = 1
 TEMP_MAX = 50
 
 BOUNDS = {
-    'light': (LIGHT_MIN, LIGHT_MAX),  # x: 光照强度
-    'temp': (TEMP_MIN, TEMP_MAX),    # y: 温度
-    'moisture': (MOISTURE_MIN, MOISTURE_MAX)  # z: 湿度
+    'light': (LIGHT_MIN, LIGHT_MAX),  # x: light intensity
+    'temp': (TEMP_MIN, TEMP_MAX),    # y: temperature
+    'moisture': (MOISTURE_MIN, MOISTURE_MAX)  # z: moisture
 }
 
-# === 动作增量设置（按照最大值的正负5%10%20%50%70%的近似整数）===
-# light (1-50, 范围49): 5%≈2, 10%≈5, 20%≈10, 50%≈25, 70%≈35
+# === action-increment settings(5%10%20%50%70%)===
+# light (1-50, 49): 5%about 2, 10%about 5, 20%about 10, 50%about 25, 70%about 35
 DELTA_LIGHT = [35, 25, 10, 5, 2, -2, -5, -10, -25, -35]
-# temp (1-50, 范围49): 5%≈2, 10%≈5, 20%≈10, 50%≈25, 70%≈35
+# temp (1-50, 49): 5%about 2, 10%about 5, 20%about 10, 50%about 25, 70%about 35
 DELTA_TEMP = [35, 25, 10, 5, 2, -2, -5, -10, -25, -35]
-# moisture (1-50, 范围49): 5%≈2, 10%≈5, 20%≈10, 50%≈25, 70%≈35
+# moisture (1-50, 49): 5%about 2, 10%about 5, 20%about 10, 50%about 25, 70%about 35
 DELTA_MOISTURE = [35, 25, 10, 5, 2, -2, -5, -10, -25, -35]
 
 
 # ========================================
-# ========== 状态归一化函数 ==========
+# ========== state normalization functions ==========
 # ========================================
 def normalize_state(state):
     """
-    将状态归一化到[0, 1]区间
+    [0, 1]interval
     state: (light, temp, moisture)
     """
     normalized = np.array([
@@ -60,8 +60,8 @@ def normalize_state(state):
 
 def denormalize_state(normalized_state):
     """
-    将归一化的状态还原到原始范围
-    normalized_state: (norm_light, norm_temp, norm_moisture) 在[0,1]区间
+    
+    normalized_state: (norm_light, norm_temp, norm_moisture) [0,1]interval
     """
     state = np.array([
         normalized_state[0] * (BOUNDS['light'][1] - BOUNDS['light'][0]) + BOUNDS['light'][0],
@@ -75,7 +75,7 @@ def denormalize_state(normalized_state):
 
 
 def generate_random_state():
-    """生成符合各维度范围的随机状态"""
+    """"""
     light = np.random.randint(BOUNDS['light'][0], BOUNDS['light'][1] + 1)
     temp = np.random.randint(BOUNDS['temp'][0], BOUNDS['temp'][1] + 1)
     moisture = np.random.randint(BOUNDS['moisture'][0], BOUNDS['moisture'][1] + 1)
@@ -83,7 +83,7 @@ def generate_random_state():
 
 
 def clip_state(state):
-    """将状态限制在各维度的边界内"""
+    """"""
     return np.array([
         np.clip(state[0], BOUNDS['light'][0], BOUNDS['light'][1]),
         np.clip(state[1], BOUNDS['temp'][0], BOUNDS['temp'][1]),
@@ -92,21 +92,21 @@ def clip_state(state):
 
 
 def is_state_valid(state):
-    """检查状态是否在所有维度的有效范围内"""
+    """"""
     return (BOUNDS['light'][0] <= state[0] <= BOUNDS['light'][1] and
             BOUNDS['temp'][0] <= state[1] <= BOUNDS['temp'][1] and
             BOUNDS['moisture'][0] <= state[2] <= BOUNDS['moisture'][1])
 
 
 def execute_Tr(position):
-    """执行目标函数并返回触发的路径"""
+    """Execute the objective function and return triggered paths"""
     x = int(np.clip(position[0], BOUNDS['light'][0], BOUNDS['light'][1]))
     temp = int(np.clip(position[1], BOUNDS['temp'][0], BOUNDS['temp'][1]))
     z = int(np.clip(position[2], BOUNDS['moisture'][0], BOUNDS['moisture'][1]))
     return category1_multivariable_control(x, temp, z)
 
 
-# === 增强版指标收集器 ===
+# === enhanced metrics collector ===
 class MetricsCollector:
     def __init__(self):
         self.start_time = None
@@ -119,7 +119,7 @@ class MetricsCollector:
         self.memory_check_count = 0
         self.step_count = 0
 
-        # === PSO阶段统计 ===
+        # === PSO stage statistics ===
         self.pso_start_time = None
         self.pso_end_time = None
         self.perfect_solutions_count = 0
@@ -184,7 +184,7 @@ class MetricsCollector:
             self.action_improvements.append(1 if improvement > 0 else 0)
 
 
-# === 奖励函数 ===
+# === reward function ===
 def compute_reward(state, target_path, triggered, prev_triggered=None, prev_state=None):
     sim = jaccard_similarity(triggered, target_path)
     reward = sim * 10
@@ -196,14 +196,14 @@ def compute_reward(state, target_path, triggered, prev_triggered=None, prev_stat
 
 
 def category1_multivariable_control(dx, dy, dz):
-    """执行目标函数并返回触发的路径"""
-    # --- 1. 常量与配置 ---
-    MAX_GRID_SIZE = 500.0  # 模拟网格的最大边界，扩大到 500.0
-    INITIAL_BATTERY = 1000.0  # 初始电量相应扩大，以支撑更长的路径
-    BATTERY_PER_STEP = 1.0  # 每走一步消耗的电量降低，避免一步耗尽
-    SAFE_DISTANCE = 5.0  # 安全距离阈值 (固定)
-    CRITICAL_BATTERY_LEVEL = 100.0  # 危险电量阈值 (固定)
-    TARGET_X, TARGET_Y, TARGET_Z = 450.0, 450.0, 200.0  # 目标坐标相应扩大 (固定值)
+    """Execute the objective function and return triggered paths"""
+    # --- 1. constants and configuration ---
+    MAX_GRID_SIZE = 500.0  # ,  500.0
+    INITIAL_BATTERY = 1000.0  # , Path 
+    BATTERY_PER_STEP = 1.0  # , 
+    SAFE_DISTANCE = 5.0  #  ()
+    CRITICAL_BATTERY_LEVEL = 100.0  #  ()
+    TARGET_X, TARGET_Y, TARGET_Z = 450.0, 450.0, 200.0  #  ()
 
     MIN_PLANNING_X = 10.0
     MIN_PLANNING_Y = 15.0
@@ -214,17 +214,17 @@ def category1_multivariable_control(dx, dy, dz):
 
     triggered = set()
 
-    # 模拟环境状态变量，以修复原始代码中的语法错误
-    # 这些变量在原始代码中未定义，这里随机生成以确保代码可执行
+    # , 
+    # , 
     current_x = random.uniform(0.0, MAX_GRID_SIZE)
     current_y = random.uniform(0.0, MAX_GRID_SIZE)
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
 
-    # 为了模仿原始代码可能试图比较的'当前位置'与'速度'的关系，
-    # 针对第10-15分支中的 'self.y' 采用一个模拟值。
-    simulated_y = current_y  # 使用 current_y 作为 self.y 的模拟
+    # '''', 
+    # Run 10-15branch 'self.y' .
+    simulated_y = current_y  #  current_y  self.y 
 
-    # --- 分支 1-4 ---
+    # --- branch 1-4 ---
     if abs(dx) < MIN_PLANNING_X != abs(dy) < MIN_PLANNING_X:
         triggered.add(1)
     if abs(dx) < MIN_PLANNING_X != abs(dz) < MIN_PLANNING_X:
@@ -234,7 +234,7 @@ def category1_multivariable_control(dx, dy, dz):
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Z:
         triggered.add(4)
 
-    # --- 分支 5-9 ---
+    # --- branch 5-9 ---
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dx) > MIN_PLANNING_Z * 2:
         triggered.add(5)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dy) > MIN_PLANNING_Z * 2:
@@ -246,7 +246,7 @@ def category1_multivariable_control(dx, dy, dz):
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Z:
         triggered.add(9)
 
-    # --- 分支 10-15 --- (使用 simulated_y 替代 self.y)
+    # --- branch 10-15 --- ( simulated_y  self.y)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 10:
         triggered.add(10)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 30:
@@ -260,7 +260,7 @@ def category1_multivariable_control(dx, dy, dz):
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dz < 20:
         triggered.add(15)
 
-    # --- 分支 16-21 ---
+    # --- branch 16-21 ---
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dx) > CRITICAL_X_VELOCITY * 1.5:
         triggered.add(16)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dz) > CRITICAL_X_VELOCITY * 1.5:
@@ -274,7 +274,7 @@ def category1_multivariable_control(dx, dy, dz):
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Y_VELOCITY * 1.5:
         triggered.add(21)
 
-    # --- 分支 22-29 --- (使用 current_x, current_y, current_z 替代未定义的变量)
+    # --- branch 22-29 --- ( current_x, current_y, current_z )
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_X < current_z and dz > CRITICAL_Z_VELOCITY:
         triggered.add(22)
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_Y < current_z and dz > CRITICAL_Z_VELOCITY:
@@ -295,7 +295,7 @@ def category1_multivariable_control(dx, dy, dz):
     return triggered
 
 
-# 目标路径定义
+# target path definitions
 targetPaths = [
     {1, 2, 3, 4, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29},
     {5, 6, 7, 8, 9, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
@@ -305,34 +305,34 @@ targetPaths = [
 
 def jaccard_similarity(set1, set2):
     """
-    计算Jaccard相似度
-    **如果set1包含set2（即set2是set1的子集），返回1.0**
+    Compute Jaccard similarity
+    **If set1 contains set2(set2set1), return 1.0**
     """
-    # 如果set1覆盖了set2（目标路径），返回相似度1
+    # set1set2(target paths), Similarity1
     if set2.issubset(set1):
         return 1.0
 
-    # 否则计算标准Jaccard相似度
+    # Otherwise compute standard Jaccard similarity
     intersection = len(set1 & set2)
     union = len(set1 | set2)
     return intersection / union if union != 0 else 0.0
 
 
 def calculate_fitness(position, target_path):
-    """计算适应度（Jaccard相似度）"""
+    """(JaccardSimilarity)"""
     triggered = execute_Tr(position)
 
-    # 如果生成路径完全包含目标路径，返回最高适应度
+    # Path target paths, Maximum
     if target_path.issubset(triggered):
         return 1.0
 
-    # 否则计算Jaccard相似度
+    # Compute Jaccard similarity
     intersection = len(triggered & target_path)
     union = len(triggered | target_path)
     return intersection / union if union > 0 else 0.0
 
 
-# === 路径相似度矩阵计算 ===
+# === Path Similarity ===
 def compute_path_similarity_matrix(paths):
     n = len(paths)
     matrix = np.zeros((n, n))
@@ -344,7 +344,7 @@ def compute_path_similarity_matrix(paths):
     return matrix
 
 
-# === 路径分组 ===
+# === Path  ===
 def group_paths_by_similarity(paths):
     sim_matrix = compute_path_similarity_matrix(paths)
     avg_sim_scores = np.mean(sim_matrix, axis=1)
@@ -360,7 +360,7 @@ def group_paths_by_similarity(paths):
     return similar_group, isolated_group
 
 
-# === 样本生成===
+# === Sample generation===
 def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, top_k=200):
     def jaccard_similarity_local(a, b):
         if not a and not b:
@@ -395,7 +395,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
                 light, temp, moisture = int(s[0][0]), int(s[0][1]), int(s[0][2])
                 f.write(f"{light} {temp} {moisture}\t{s[1]:.4f}\t{s[2]:.4f}\t{s[3]:.4f}\t{s[4]:.4f}\n")
 
-    print("正在为相似路径组生成样本数据...")
+    print("Similar path group...")
     base_dir = os.path.join(os.getcwd(), "path_samples")
     for path_idx in similar_group_indices:
         path = targetPaths[path_idx]
@@ -417,7 +417,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
             save_samples(path_id=path_idx + 1, samples=samples[:top_k], base_dir=base_dir)
 
 
-# === 经验回放池===
+# === ===
 class SharedExperienceReplay:
     def __init__(self, capacity=10000):
         self.capacity = capacity
@@ -447,7 +447,7 @@ class SharedExperienceReplay:
         return len(self.buffer)
 
     def get_high_reward_samples(self, target_path, num_samples=20):
-        """从经验池中获取与目标路径相似度最高的样本"""
+        """target pathsSimilarityMaximum"""
         if len(self.buffer) == 0:
             return []
 
@@ -458,13 +458,13 @@ class SharedExperienceReplay:
             triggered = execute_Tr(state_tuple)
             sim = jaccard_similarity(triggered, target_path)
 
-            # 如果发现完美匹配（相似度为1），直接返回该样本
+            # (Similarity1), 
             if sim >= 1.0:
                 return [(state_tuple, 0, sim, triggered)]
 
             samples_with_similarity.append((state_tuple, 0, sim, triggered))
 
-        # 按相似度从大到小排序，返回前num_samples个
+        # Similarity, num_samples
         samples_with_similarity.sort(key=lambda x: x[2], reverse=True)
         return samples_with_similarity[:num_samples]
 
@@ -484,7 +484,7 @@ def load_path_data(file_path):
     return path_data
 
 
-# === DQN网络 ===
+# === DQN ===
 class DQN(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(DQN, self).__init__()
@@ -519,17 +519,17 @@ class DQNAgentWithPER:
         self.target_model.load_state_dict(self.model.state_dict())
 
     def decode_action(self, action_idx):
-        """解码动作索引为具体的维度增量"""
-        dim = action_idx // 10  # 维度: 0=light, 1=temp, 2=moisture
-        delta_idx = action_idx % 10  # 增量索引: 0-9
+        """"""
+        dim = action_idx // 10  # : 0=light, 1=temp, 2=moisture
+        delta_idx = action_idx % 10  # : 0-9
 
-        if dim == 0:  # light维度
+        if dim == 0:  # light
             delta = DELTA_LIGHT[delta_idx]
             return (delta, 0, 0)
-        elif dim == 1:  # temp维度
+        elif dim == 1:  # temp
             delta = DELTA_TEMP[delta_idx]
             return (0, delta, 0)
-        elif dim == 2:  # moisture维度
+        elif dim == 2:  # moisture
             delta = DELTA_MOISTURE[delta_idx]
             return (0, 0, delta)
 
@@ -586,7 +586,7 @@ class DQNAgentWithPER:
         self.target_model.load_state_dict(self.model.state_dict())
 
 
-# === 第一阶段训练函数===
+# === Run ===
 def generate_and_train_for_similar_paths(agent, similar_group, path_documents, run_metrics, episodes=500, batch_size=32,
                                          steps_per_test=5, replay_times=10, is_isolated=False):
     trained_paths = set()
@@ -604,23 +604,23 @@ def generate_and_train_for_similar_paths(agent, similar_group, path_documents, r
 
             target_path = targetPaths[path_idx]
 
-            # === 训练流程参数 ===
-            BATCH_SIZE = 50  # 每组50个样本
-            N_SAMPLES = 200  # 总共200个样本
-            N_STEPS = 3  # 每个样本走3步
-            N_EPOCHS = 5  # 重复训练5次
+            # ===  ===
+            BATCH_SIZE = 50  # 50
+            N_SAMPLES = 200  # 200
+            N_STEPS = 3  # 3
+            N_EPOCHS = 5  # 5
 
-            replay_count = 0  # 回放计数器，用于控制模型更新
+            replay_count = 0  # , 
 
-            # 重复训练5次
+            # 5
             for epoch in range(N_EPOCHS):
-                print(f"  路径{path_idx + 1} - 第{epoch + 1}/{N_EPOCHS}轮训练")
+                print(f"  Path {path_idx + 1} - Run {epoch + 1}/{N_EPOCHS}")
 
-                # 将200个样本分成4组，每组50个
+                # 2004, 50
                 for batch_start in range(0, N_SAMPLES, BATCH_SIZE):
                     batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES)
 
-                    # 处理当前批次的50个样本
+                    # 50
                     for test_data_idx in range(batch_start, batch_end):
                         if test_data_idx >= len(path_data):
                             break
@@ -630,9 +630,9 @@ def generate_and_train_for_similar_paths(agent, similar_group, path_documents, r
                         prev_triggered = None
                         prev_reward = None
 
-                        # 每个样本走3步
+                        # 3
                         for step in range(N_STEPS):
-                            # 获取合法动作
+                            # 
                             legal_actions = []
                             for a in range(agent.action_dim):
                                 dx, dy, dz = agent.decode_action(a)
@@ -643,7 +643,7 @@ def generate_and_train_for_similar_paths(agent, similar_group, path_documents, r
                             if not legal_actions:
                                 break
 
-                            # 选择动作
+                            # 
                             if random.random() < agent.epsilon:
                                 action = random.choice(legal_actions)
                             else:
@@ -652,41 +652,41 @@ def generate_and_train_for_similar_paths(agent, similar_group, path_documents, r
                                     q_values = agent.model(state_tensor)[0]
                                 action = legal_actions[torch.argmax(q_values[legal_actions]).item()]
 
-                            # 执行动作
+                            # 
                             dx, dy, dz = agent.decode_action(action)
                             next_state = (state[0] + dx, state[1] + dy, state[2] + dz)
 
-                            # 计算奖励
+                            # 
                             triggered = execute_Tr(next_state)
                             reward = compute_reward(next_state, target_path, triggered, prev_triggered, prev_state)
                             done = (step == N_STEPS - 1)
 
-                            # 存储经验
+                            # 
                             td_error = agent.store_transition(state, action, reward, next_state, done)
                             run_metrics.record_step_metrics(reward, td_error, triggered, target_path)
 
                             if prev_reward is not None:
                                 run_metrics.record_action_improvement(reward, prev_reward)
 
-                            # 更新状态
+                            # 
                             prev_state = state
                             prev_triggered = triggered
                             prev_reward = reward
                             state = next_state
 
-                    # 当前批次的50个样本都走完后，进行一次回放训练
+                    # 50, 
                     if len(agent.replay_buffer) >= batch_size:
                         agent.train(batch_size)
                         replay_count += 1
 
-                        # 每回放2次后更新一次目标模型
+                        # 2
                         if replay_count % 2 == 0:
                             agent.update_target_model()
                             print(
-                                f"    批次 {batch_start // BATCH_SIZE + 1}/4 完成 | 已回放 {replay_count} 次 | 模型已更新")
+                                f"     {batch_start // BATCH_SIZE + 1}/4 completed |  {replay_count}  | ")
 
             trained_paths.add(path_idx)
-            print(f"  路径{path_idx + 1} 训练完成\n")
+            print(f"  Path {path_idx + 1} completed\n")
 
         if len(trained_paths) == len(similar_group):
             break
@@ -775,7 +775,7 @@ def generate_samples_for_isolated_paths(agent_similar, isolated_group_indices, n
         save_samples(path_id=path_idx + 1, samples=top_samples, base_dir=base_dir)
 
 
-# === 第二阶段增强训练函数===
+# === Run ===
 def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated, similar_group, isolated_group,
                                                    path_documents, run_metrics, episodes=500, batch_size=32,
                                                    is_isolated=True):
@@ -794,23 +794,23 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
 
             target_path = targetPaths[path_idx]
 
-            # === 训练流程参数 ===
-            BATCH_SIZE = 50  # 每组50个样本
-            N_SAMPLES = 200  # 总共200个样本
-            N_STEPS = 3  # 每个样本走3步
-            N_EPOCHS = 5  # 重复训练5次
+            # ===  ===
+            BATCH_SIZE = 50  # 50
+            N_SAMPLES = 200  # 200
+            N_STEPS = 3  # 3
+            N_EPOCHS = 5  # 5
 
-            replay_count = 0  # 回放计数器
+            replay_count = 0  # 
 
-            # 重复训练5次
+            # 5
             for epoch in range(N_EPOCHS):
-                print(f"  孤岛路径{path_idx + 1} - 第{epoch + 1}/{N_EPOCHS}轮训练")
+                print(f"  Path {path_idx + 1} - Run {epoch + 1}/{N_EPOCHS}")
 
-                # 将200个样本分成4组,每组50个
+                # 2004,50
                 for batch_start in range(0, N_SAMPLES, BATCH_SIZE):
                     batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES)
 
-                    # 处理当前批次的50个样本
+                    # 50
                     for test_data_idx in range(batch_start, batch_end):
                         if test_data_idx >= len(stage2_path_data):
                             break
@@ -820,9 +820,9 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
                         prev_triggered = None
                         prev_reward = None
 
-                        # 每个样本走3步
+                        # 3
                         for step in range(N_STEPS):
-                            # 获取合法动作
+                            # 
                             legal_actions = []
                             for a in range(agent_isolated.action_dim):
                                 dx, dy, dz = agent_isolated.decode_action(a)
@@ -833,7 +833,7 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
                             if not legal_actions:
                                 break
 
-                            # 选择动作
+                            # 
                             if random.random() < agent_isolated.epsilon:
                                 action = random.choice(legal_actions)
                             else:
@@ -842,46 +842,46 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
                                     q_values = agent_isolated.model(state_tensor)[0]
                                 action = legal_actions[torch.argmax(q_values[legal_actions]).item()]
 
-                            # 执行动作
+                            # 
                             dx, dy, dz = agent_isolated.decode_action(action)
                             next_state = (state[0] + dx, state[1] + dy, state[2] + dz)
 
-                            # 计算奖励
+                            # 
                             triggered = execute_Tr(next_state)
                             reward = compute_reward(next_state, target_path, triggered, prev_triggered, prev_state)
 
-                            # 对孤岛路径给予额外奖励
+                            # Path 
                             if target_path.issubset(triggered):
                                 reward += 2.0
 
                             done = (step == N_STEPS - 1)
 
-                            # 存储经验
+                            # 
                             td_error = agent_isolated.store_transition(state, action, reward, next_state, done)
                             run_metrics.record_step_metrics(reward, td_error, triggered, target_path)
 
                             if prev_reward is not None:
                                 run_metrics.record_action_improvement(reward, prev_reward)
 
-                            # 更新状态
+                            # 
                             prev_state = state
                             prev_triggered = triggered
                             prev_reward = reward
                             state = next_state
 
-                    # 当前批次的50个样本都走完后，进行一次回放训练
+                    # 50, 
                     if len(agent_isolated.replay_buffer) >= batch_size:
                         agent_isolated.train(batch_size)
                         replay_count += 1
 
-                        # 每回放2次后更新一次目标模型
+                        # 2
                         if replay_count % 2 == 0:
                             agent_isolated.update_target_model()
                             print(
-                                f"    批次 {batch_start // BATCH_SIZE + 1}/4 完成 | 已回放 {replay_count} 次 | 模型已更新")
+                                f"     {batch_start // BATCH_SIZE + 1}/4 completed |  {replay_count}  | ")
 
             trained_paths.add(path_idx)
-            print(f"  孤岛路径{path_idx + 1} 训练完成\n")
+            print(f"  Path {path_idx + 1} completed\n")
 
         if len(trained_paths) == len(isolated_group):
             break
@@ -889,7 +889,7 @@ def generate_and_train_for_isolated_paths_enhanced(agent_similar, agent_isolated
     return agent_isolated
 
 
-# === PSO粒子类 ===
+# === PSO ===
 class Particle:
     def __init__(self, initial_position=None):
         if initial_position is not None:
@@ -912,7 +912,7 @@ class Particle:
         self.fitness = 0
 
 
-# === 普通PSO优化器类 ===
+# === standard PSO ===
 class PSO:
     def __init__(self, target_path, swarm_size=20, dqn_samples=None):
         self.target_path = target_path
@@ -953,11 +953,11 @@ class PSO:
     def fitness_function(self, position):
         try:
             triggered = execute_Tr(position)
-            # 使用子集判断：如果目标路径是触发路径的子集，适应度为1
+            # : target pathsPath , 1
             if self.target_path.issubset(triggered):
                 return 1.0
 
-            # 否则计算Jaccard相似度
+            # Compute Jaccard similarity
             intersection = len(triggered & self.target_path)
             union = len(triggered | self.target_path)
             return intersection / union if union > 0 else 0.0
@@ -965,21 +965,21 @@ class PSO:
             return 0.0
 
     def update(self, iteration, max_iterations):
-        # 标准PSO参数
-        w = 0.7  # 惯性权重
-        c1 = 1.5  # 个体学习因子
-        c2 = 1.5  # 社会学习因子
+        # PSO
+        w = 0.7  # 
+        c1 = 1.5  # 
+        c2 = 1.5  # 
 
         for particle in self.particles:
             r1 = np.random.random(3)
             r2 = np.random.random(3)
 
-            # 更新速度
+            # 
             particle.velocity = (w * particle.velocity +
                                  c1 * r1 * (particle.best_position - particle.position) +
                                  c2 * r2 * (self.global_best_position - particle.position))
 
-            # 限制最大速度
+            # 
             max_velocity = np.array([
                 (BOUNDS['light'][1] - BOUNDS['light'][0]) * 0.2,
                 (BOUNDS['temp'][1] - BOUNDS['temp'][0]) * 0.2,
@@ -987,27 +987,27 @@ class PSO:
             ])
             particle.velocity = np.clip(particle.velocity, -max_velocity, max_velocity)
 
-            # 更新位置
+            # 
             particle.position += particle.velocity
             particle.position = clip_state(particle.position)
 
-            # 计算适应度
+            # 
             particle.fitness = self.fitness_function(particle.position)
 
-            # 更新个体最优
+            # 
             if particle.fitness > particle.best_fitness:
                 particle.best_fitness = particle.fitness
                 particle.best_position = particle.position.copy()
 
-            # 更新全局最优
+            # 
             if particle.fitness > self.global_best_fitness:
                 self.global_best_fitness = particle.fitness
                 self.global_best_position = particle.position.copy()
 
 
-# === 改进的Excel导出函数 ===
+# === Excel ===
 def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, filename=None):
-    """导出多次运行结果到Excel"""
+    """ runExcel"""
 
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1015,9 +1015,9 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
 
     wb = Workbook()
 
-    # 样式定义
+    # 
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(name='微软雅黑', size=11, bold=True, color="FFFFFF")
+    header_font = Font(name='Microsoft YaHei', size=11, bold=True, color="FFFFFF")
 
     success_fill = PatternFill(start_color="C6E0B4", end_color="C6E0B4", fill_type="solid")
     fail_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
@@ -1034,13 +1034,13 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
     center_align = Alignment(horizontal='center', vertical='center')
     left_align = Alignment(horizontal='left', vertical='center')
 
-    # ========== 工作表1: 运行汇总 ==========
+    # ========== 1:  ==========
     ws1 = wb.active
-    ws1.title = "运行汇总"
+    ws1.title = ""
     ws1.sheet_view.showGridLines = False
 
-    # 表头
-    headers = ["运行次数", "成功率", "成功数量", "平均适应度", "平均迭代次数", "运行时间(s)", "DQN解决数"]
+    # 
+    headers = ["Run", "", "", "", "Average Iterations", "(s)", "DQN"]
     col_widths = [12, 12, 12, 14, 14, 14, 12]
 
     for col, (header, width) in enumerate(zip(headers, col_widths), 1):
@@ -1051,13 +1051,13 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
         cell.alignment = center_align
         ws1.column_dimensions[get_column_letter(col)].width = width
 
-    # 填充数据
+    # 
     for run_idx, (results, run_metrics) in enumerate(zip(all_run_results, all_run_metrics), start=1):
         success_count = sum(1 for r in results if r['perfect_match'])
         success_rate = (success_count / len(targetPaths)) * 100
         avg_fitness = np.mean([r['fitness'] for r in results])
 
-        # 计算平均迭代次数
+        # Average Iterations
         iterations_list = []
         for r in results:
             if r.get('method') == 'DQN':
@@ -1068,14 +1068,14 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
                 iterations_list.append(10000)
         avg_iterations = np.mean(iterations_list)
 
-        # 统计DQN解决的数量
+        # DQN
         dqn_solved_count = sum(1 for r in results if r.get('method') == 'DQN')
 
-        # 计算总运行时间
+        # 
         total_time = run_metrics.pso_end_time - run_metrics.pso_start_time if run_metrics.pso_end_time else 0
 
         row_data = [
-            f"运行 {run_idx}",
+            f" {run_idx}",
             f"{success_rate:.1f}%",
             f"{success_count}/{len(targetPaths)}",
             f"{avg_fitness:.4f}",
@@ -1104,12 +1104,12 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
     ws1.freeze_panes = 'A2'
     ws1.auto_filter.ref = f"A1:G{len(all_run_results) + 1}"
 
-    # ========== 工作表2: 路径统计 ==========
-    ws2 = wb.create_sheet(title="路径统计")
+    # ========== 2: Path  ==========
+    ws2 = wb.create_sheet(title="Path ")
     ws2.sheet_view.showGridLines = False
 
-    headers2 = ["路径编号", "成功次数", "成功率", "平均适应度", "平均迭代次数", "最小迭代次数", "最大迭代次数",
-                "DQN解决次数"]
+    headers2 = ["Path ID", "", "", "", "Average Iterations", "Minimum Iterations", "Maximum Iterations",
+                "DQN"]
     col_widths2 = [12, 12, 12, 14, 14, 14, 14, 14]
 
     for col, (header, width) in enumerate(zip(headers2, col_widths2), 1):
@@ -1144,7 +1144,7 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
                                if results[path_idx].get('method') == 'DQN')
 
         row_data = [
-            f"路径 {path_idx + 1}",
+            f"Path  {path_idx + 1}",
             f"{success_count}/{num_runs}",
             f"{success_rate:.1f}%",
             f"{avg_fitness:.4f}",
@@ -1174,11 +1174,11 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
     ws2.freeze_panes = 'A2'
     ws2.auto_filter.ref = f"A1:H{len(targetPaths) + 1}"
 
-    # ========== 工作表3: 最佳粒子详情 ==========
-    ws3 = wb.create_sheet(title="最佳粒子详情")
+    # ========== 3:  ==========
+    ws3 = wb.create_sheet(title="")
     ws3.sheet_view.showGridLines = False
 
-    headers3 = ["路径", "运行", "最佳粒子(light,temp,moisture)", "适应度", "迭代次数", "求解方法", "生成路径"]
+    headers3 = ["Path ", "", "(light,temp,moisture)", "", "Iterations", "", "Path "]
     col_widths3 = [10, 10, 25, 12, 12, 12, 50]
 
     for col, (header, width) in enumerate(zip(headers3, col_widths3), 1):
@@ -1209,8 +1209,8 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
             path_str = str(sorted(list(triggered)))
 
             row_data = [
-                f"路径{path_idx + 1}",
-                f"运行{run_idx}",
+                f"Path {path_idx + 1}",
+                f"{run_idx}",
                 particle_str,
                 f"{fitness:.4f}",
                 convergence_iter if convergence_iter < 10000 else "-",
@@ -1242,11 +1242,11 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
     ws3.freeze_panes = 'A2'
     ws3.auto_filter.ref = f"A1:G{row_idx - 1}"
 
-    # ========== 工作表4: 目标路径 ==========
-    ws4 = wb.create_sheet(title="目标路径")
+    # ========== 4: target paths ==========
+    ws4 = wb.create_sheet(title="target paths")
     ws4.sheet_view.showGridLines = False
 
-    headers4 = ["路径编号", "目标路径", "规则数量"]
+    headers4 = ["Path ID", "target paths", ""]
     col_widths4 = [12, 60, 12]
 
     for col, (header, width) in enumerate(zip(headers4, col_widths4), 1):
@@ -1261,7 +1261,7 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
         path_str = str(sorted(list(target_path)))
 
         row_data = [
-            f"路径 {path_idx + 1}",
+            f"Path  {path_idx + 1}",
             path_str,
             len(target_path)
         ]
@@ -1280,29 +1280,29 @@ def export_multiple_runs_to_excel(all_run_results, all_run_metrics, num_runs, fi
 
     ws4.freeze_panes = 'A2'
 
-    # 保存文件
+    # 
     output_dir = os.path.join(os.getcwd(), "results")
     os.makedirs(output_dir, exist_ok=True)
     filepath = os.path.join(output_dir, filename)
     wb.save(filepath)
 
     print(f"\n{'=' * 70}")
-    print(f"✓ 结果已导出到: {filepath}")
+    print(f" : {filepath}")
     print(f"{'=' * 70}")
-    print(f"包含以下工作表:")
-    print(f"  1. 运行汇总       - {num_runs}次运行的整体统计（含DQN解决数）")
-    print(f"  2. 路径统计       - 每条路径的详细统计（含DQN解决次数）")
-    print(f"  3. 最佳粒子详情   - 每次运行每条路径的最佳解（标注求解方法）")
-    print(f"  4. 目标路径       - 所有目标路径的定义")
+    print(f":")
+    print(f"  1.        - {num_runs} run(DQN)")
+    print(f"  2. Path        - Path (DQN)")
+    print(f"  3.    -  runPath ()")
+    print(f"  4. target paths       - target paths")
     print(f"{'=' * 70}\n")
 
     return filepath
 
 
 def run_single_experiment(run_num, similar_group, isolated_group):
-    """运行单次DQN-PSO实验"""
+    """Run oneDQN-PSO"""
     print(f"\n{'=' * 100}")
-    print(f"开始第 {run_num} 次运行")
+    print(f"Start run  {run_num}  run")
     print(f"{'=' * 100}")
 
     run_metrics = MetricsCollector()
@@ -1311,7 +1311,7 @@ def run_single_experiment(run_num, similar_group, isolated_group):
     path_documents = os.path.join(os.getcwd(), "path_samples")
 
     if run_num == 1:
-        print("生成相似路径样本数据...")
+        print("Path ...")
         generate_samples_for_similar_paths(similar_group, num_total=2000, top_k=200)
 
     replay_buffer = SharedExperienceReplay(capacity=10000)
@@ -1319,15 +1319,15 @@ def run_single_experiment(run_num, similar_group, isolated_group):
     action_dim = 30
     agent = DQNAgentWithPER(state_dim, action_dim, replay_buffer)
 
-    print(f"运行{run_num} - 第一阶段：相似路径训练")
+    print(f"{run_num} - Run : Path ")
     generate_and_train_for_similar_paths(agent, similar_group, path_documents, run_metrics, episodes=500, batch_size=32,
                                          is_isolated=False)
 
     if run_num == 1:
-        print("生成孤岛路径增强样本...")
+        print("Path ...")
         generate_samples_for_isolated_paths(agent, isolated_group, num_total=2000, top_k=200)
 
-    print(f"运行{run_num} - 第二阶段：增强版孤岛路径训练")
+    print(f"{run_num} - Run : Path ")
     isolated_replay_buffer = SharedExperienceReplay(capacity=15000)
     agent_isolated = DQNAgentWithPER(state_dim, action_dim, isolated_replay_buffer)
 
@@ -1348,7 +1348,7 @@ def run_single_experiment(run_num, similar_group, isolated_group):
 
     run_metrics.end_training()
 
-    # 从经验池提取最终样本
+    # final samples
     dqn_best_samples = {}
 
     for path_idx in similar_group:
@@ -1365,8 +1365,8 @@ def run_single_experiment(run_num, similar_group, isolated_group):
         for state_tuple, _, sim, triggered in high_reward_samples:
             run_metrics.record_final_output_sample(triggered, target_path)
 
-    # PSO优化阶段
-    print(f"运行{run_num} - PSO优化阶段")
+    # PSO
+    print(f"{run_num} - PSO")
     run_metrics.start_pso_phase()
 
     max_iterations = 3000
@@ -1402,7 +1402,7 @@ def run_single_experiment(run_num, similar_group, isolated_group):
             })
             run_metrics.record_pso_result(1.0, True, convergence_iter=0, path_id=i + 1,
                                           method='DQN', reset_count=0, execution_time=path_execution_time)
-            status = "✓完美(DQN)"
+            status = "(DQN)"
         else:
             pso = PSO(target_path, swarm_size=20, dqn_samples=dqn_samples_for_path)
 
@@ -1445,9 +1445,9 @@ def run_single_experiment(run_num, similar_group, isolated_group):
                 execution_time=path_execution_time
             )
 
-            status = "✓完美(PSO)" if is_perfect else f"○部分({pso.global_best_fitness:.3f})"
+            status = "(PSO)" if is_perfect else f"({pso.global_best_fitness:.3f})"
 
-        print(f"  路径{i + 1}: {status} | 耗时 {path_execution_time:.2f}s")
+        print(f"  Path {i + 1}: {status} |  {path_execution_time:.2f}s")
 
     run_metrics.end_pso_phase()
 
@@ -1455,20 +1455,20 @@ def run_single_experiment(run_num, similar_group, isolated_group):
     success_rate = (success_count / len(targetPaths)) * 100
     pso_time = run_metrics.pso_end_time - run_metrics.pso_start_time
 
-    print(f"\n第{run_num}次运行完成: 成功率 {success_rate:.1f}% ({success_count}/{len(targetPaths)}) | "
-          f"PSO耗时 {pso_time:.2f}秒")
+    print(f"\nRun {run_num} runcompleted:  {success_rate:.1f}% ({success_count}/{len(targetPaths)}) | "
+          f"PSO {pso_time:.2f} seconds")
 
     return pso_results, run_metrics
 
 
 def run_multiple_dqn_pso_experiments(num_runs):
-    """运行多次DQN-PSO实验"""
+    """DQN-PSO"""
     print("\n" + "=" * 100)
-    print(f"DQN-PSO算法（普通PSO） - {num_runs}次独立运行实验")
+    print(f"DQN-PSO(standard PSO) - {num_runs}")
     print("=" * 100)
-    print(f"目标路径: 路径1 至 路径{len(targetPaths)} (共{len(targetPaths)}条)")
-    print(f"运行次数: {num_runs}")
-    print(f"三维取值范围：Light: {BOUNDS['light']}, Temp: {BOUNDS['temp']}, Moisture: {BOUNDS['moisture']}")
+    print(f"target paths: Path 1  Path {len(targetPaths)} ({len(targetPaths)})")
+    print(f"Run: {num_runs}")
+    print(f": Light: {BOUNDS['light']}, Temp: {BOUNDS['temp']}, Moisture: {BOUNDS['moisture']}")
     print("=" * 100)
 
     similar_group, isolated_group = group_paths_by_similarity(targetPaths)
@@ -1476,8 +1476,8 @@ def run_multiple_dqn_pso_experiments(num_runs):
     similar_paths_display = [idx + 1 for idx in similar_group]
     isolated_paths_display = [idx + 1 for idx in isolated_group]
 
-    print(f"相似路径组: {similar_paths_display}")
-    print(f"孤岛路径组: {isolated_paths_display}\n")
+    print(f"Similar path group: {similar_paths_display}")
+    print(f"Isolated path group: {isolated_paths_display}\n")
 
     all_run_results = []
     all_run_metrics = []
@@ -1491,8 +1491,8 @@ def run_multiple_dqn_pso_experiments(num_runs):
     total_experiment_time = time.time() - total_experiment_start
 
     print(f"\n{'=' * 100}")
-    print(f"全部{num_runs}次运行完成!")
-    print(f"总实验耗时: {total_experiment_time:.2f}秒 ({total_experiment_time / 60:.2f}分钟)")
+    print(f"All {num_runs} runcompleted!")
+    print(f": {total_experiment_time:.2f} seconds ({total_experiment_time / 60:.2f} minutes)")
     print(f"{'=' * 100}\n")
 
     return all_run_results, all_run_metrics
@@ -1500,27 +1500,27 @@ def run_multiple_dqn_pso_experiments(num_runs):
 
 if __name__ == "__main__":
     print("=" * 100)
-    print("DQN-PSO算法（普通PSO） - 多次独立运行实验系统")
+    print("DQN-PSO(standard PSO) - ")
     print("=" * 100)
-    print(f"当前配置：运行次数 = {NUM_RUNS}")
-    print(f"路径范围：路径1 - 路径{len(targetPaths)}")
+    print(f"Current configuration: Run = {NUM_RUNS}")
+    print(f"Path : Path 1 - Path {len(targetPaths)}")
     print("=" * 100)
 
-    # 可以通过命令行参数修改运行次数
+    # Run
     if len(sys.argv) > 1:
         try:
             NUM_RUNS = int(sys.argv[1])
-            print(f"从命令行读取：运行次数已修改为 {NUM_RUNS}")
+            print(f"Read from command line: Run {NUM_RUNS}")
         except ValueError:
-            print(f"命令行参数无效，使用默认运行次数 {NUM_RUNS}")
+            print(f"Invalid command-line argument, using default number of runs {NUM_RUNS}")
 
-    print("\n启动实验...")
+    print("\n...")
 
     all_run_results, all_run_metrics = run_multiple_dqn_pso_experiments(num_runs=NUM_RUNS)
 
-    print("\n正在导出结果到Excel...")
+    print("\nExcel...")
     excel_filename = export_multiple_runs_to_excel(all_run_results, all_run_metrics, NUM_RUNS)
 
-    print(f"\n程序执行完成!")
-    print(f"Excel文件: {excel_filename}")
+    print(f"\nProgram completed!")
+    print(f"Excel: {excel_filename}")
     print("=" * 100)

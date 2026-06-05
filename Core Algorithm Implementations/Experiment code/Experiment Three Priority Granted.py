@@ -14,20 +14,20 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Font, Alignment
 
-# === 设备设置 ===
+# === device setup ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# === 新的范围设置 ===
-dx_min, dx_max = 1, 50  # dx变量范围
-dy_min, dy_max = 1, 50  # dy变量范围
-dz_min, dz_max = 1, 50  # dz变量范围
+# ===  ===
+dx_min, dx_max = 1, 50  # dx
+dy_min, dy_max = 1, 50  # dy
+dz_min, dz_max = 1, 50  # dz
 
 
-# === 归一化函数 ===
+# ===  ===
 def normalize_state(state):
     """
-    将状态归一化到[0,1]范围
+    [0,1]
     state: (dx, dy, dz)
     """
     dx, dy, dz = state
@@ -39,7 +39,7 @@ def normalize_state(state):
 
 def denormalize_state(normalized_state):
     """
-    将归一化的状态还原为原始值
+    
     """
     norm_dx, norm_dy, norm_dz = normalized_state
     dx = int(norm_dx * (dx_max - dx_min) + dx_min)
@@ -49,7 +49,7 @@ def denormalize_state(normalized_state):
 
 
 def is_valid_state(state):
-    """检查状态是否在有效范围内"""
+    """"""
     dx, dy, dz = state
     return (dx_min <= dx <= dx_max and
             dy_min <= dy <= dy_max and
@@ -57,7 +57,7 @@ def is_valid_state(state):
 
 
 def clip_state(state):
-    """将状态限制在有效范围内"""
+    """"""
     dx, dy, dz = state
     return (
         max(dx_min, min(dx_max, dx)),
@@ -66,14 +66,14 @@ def clip_state(state):
     )
 
 
-# === 优先经验回放指标收集器 ===
+# === Metric ===
 class PrioritizedMetricsCollector:
     def __init__(self, experiment_name="Prioritized_DQN"):
         self.experiment_name = experiment_name
         self.start_time = None
         self.end_time = None
 
-        # 基础指标
+        # Metric
         self.total_reward = 0
         self.td_errors = []
         self.final_output_similarities = []
@@ -82,41 +82,41 @@ class PrioritizedMetricsCollector:
         self.memory_check_count = 0
         self.step_count = 0
 
-        # 详细监控指标
+        # Metric
         self.episode_rewards = []
         self.episode_similarities = []
         self.episode_td_errors = []
         self.episode_epsilon_values = []
         self.episode_memory_usage = []
 
-        # 优先级特有指标
+        # Metric
         self.priority_statistics = []
         self.importance_weights = []
         self.high_priority_samples_ratio = []
         self.priority_distribution_stats = []
 
-        # 路径组别性能指标
+        # Path Metric
         self.similar_paths_performance = []
         self.isolated_paths_performance = []
 
-        # 关键节点记录
+        # 
         self.milestone_data = {}
 
-        # 收敛性分析
+        # 
         self.convergence_window = 20
         self.convergence_threshold = 0.02
         self.convergence_detected_episode = None
 
-        # 学习效率指标
+        # Metric
         self.sample_efficiency_data = []
         self.performance_milestones = [0.6, 0.7, 0.75, 0.8]
 
-        # 对比分析专用
+        # 
         self.learning_curve_characteristics = {}
         self.early_vs_late_performance = {}
 
     def reset(self):
-        """重置所有指标，用于新一轮运行"""
+        """Metric, """
         self.start_time = None
         self.end_time = None
         self.total_reward = 0
@@ -150,7 +150,7 @@ class PrioritizedMetricsCollector:
         self.end_time = time.time()
 
     def record_step_metrics(self, reward, td_error, triggered, target_path, priority=None, is_weight=None):
-        """记录训练步骤指标，包括优先级相关信息"""
+        """Metric, """
         self.step_count += 1
         self.total_reward += reward
         self.td_errors.append(td_error)
@@ -167,7 +167,7 @@ class PrioritizedMetricsCollector:
 
     def record_episode_metrics(self, episode, episode_reward, avg_similarity, avg_td_error, epsilon,
                                path_group="similar", priority_stats=None):
-        """记录episode级别的指标，包括优先级统计"""
+        """episodeMetric, """
         self.episode_rewards.append(episode_reward)
         self.episode_similarities.append(avg_similarity)
         self.episode_td_errors.append(avg_td_error)
@@ -217,20 +217,20 @@ class PrioritizedMetricsCollector:
         self._check_performance_milestones(episode, avg_similarity)
 
     def _check_convergence(self, episode):
-        """检测是否收敛"""
+        """"""
         if len(self.episode_similarities) >= self.convergence_window and self.convergence_detected_episode is None:
             recent_similarities = self.episode_similarities[-self.convergence_window:]
             if np.std(recent_similarities) < self.convergence_threshold:
                 self.convergence_detected_episode = episode
 
     def _check_performance_milestones(self, episode, similarity):
-        """检查性能里程碑"""
+        """"""
         for milestone in self.performance_milestones:
             if similarity >= milestone and not any(data[1] == milestone for data in self.sample_efficiency_data):
                 self.sample_efficiency_data.append((episode, milestone, self.step_count))
 
     def record_final_output_sample(self, triggered, target_path):
-        """记录最终输出样本的相似度"""
+        """final samplesSimilarity"""
         if len(triggered | target_path) > 0:
             similarity = len(triggered & target_path) / len(triggered | target_path)
         else:
@@ -238,17 +238,17 @@ class PrioritizedMetricsCollector:
         self.final_output_similarities.append(similarity)
 
     def record_action_improvement(self, current_reward, prev_reward):
-        """记录动作改进"""
+        """"""
         if prev_reward is not None:
             improvement = current_reward - prev_reward
             self.action_improvements.append(1 if improvement > 0 else 0)
 
 
-# 创建优先级指标收集器
+# Metric
 prioritized_metrics = PrioritizedMetricsCollector("Prioritized_DQN_Enhanced")
 
 
-# === 简化的奖励函数 ===
+# === reward function ===
 def compute_reward(state, target_path, triggered, prev_triggered=None, prev_state=None):
     sim = jaccard_similarity(triggered, target_path)
     reward = sim * 10
@@ -258,14 +258,14 @@ def compute_reward(state, target_path, triggered, prev_triggered=None, prev_stat
 
 
 def execute_Tr(dx: int, dy: int, dz: int):
-    """执行验证规则"""
-    # --- 1. 常量与配置 ---
-    MAX_GRID_SIZE = 500.0  # 模拟网格的最大边界，扩大到 500.0
-    INITIAL_BATTERY = 1000.0  # 初始电量相应扩大，以支撑更长的路径
-    BATTERY_PER_STEP = 1.0  # 每走一步消耗的电量降低，避免一步耗尽
-    SAFE_DISTANCE = 5.0  # 安全距离阈值 (固定)
-    CRITICAL_BATTERY_LEVEL = 100.0  # 危险电量阈值 (固定)
-    TARGET_X, TARGET_Y, TARGET_Z = 450.0, 450.0, 200.0  # 目标坐标相应扩大 (固定值)
+    """"""
+    # --- 1. constants and configuration ---
+    MAX_GRID_SIZE = 500.0  # ,  500.0
+    INITIAL_BATTERY = 1000.0  # , Path 
+    BATTERY_PER_STEP = 1.0  # , 
+    SAFE_DISTANCE = 5.0  #  ()
+    CRITICAL_BATTERY_LEVEL = 100.0  #  ()
+    TARGET_X, TARGET_Y, TARGET_Z = 450.0, 450.0, 200.0  #  ()
 
     MIN_PLANNING_X = 10.0
     MIN_PLANNING_Y = 15.0
@@ -276,30 +276,30 @@ def execute_Tr(dx: int, dy: int, dz: int):
 
     triggered = set()
 
-    # 模拟环境状态变量，以修复原始代码中的语法错误
-    # 这些变量在原始代码中未定义，这里随机生成以确保代码可执行
+    # , 
+    # , 
     current_x = random.uniform(0.0, MAX_GRID_SIZE)
     current_y = random.uniform(0.0, MAX_GRID_SIZE)
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
 
-    # 为了模仿原始代码可能试图比较的'当前位置'与'速度'的关系，
-    # 针对第10-15分支中的 'self.y' 采用一个模拟值。
-    simulated_y = current_y  # 使用 current_y 作为 self.y 的模拟
+    # '''', 
+    # Run 10-15branch 'self.y' .
+    simulated_y = current_y  #  current_y  self.y 
 
-    # --- 分支 1-4 ---
+    # --- branch 1-4 ---
     if abs(dx) < MIN_PLANNING_X != abs(dy) < MIN_PLANNING_X: triggered.add(1)
     if abs(dx) < MIN_PLANNING_X != abs(dz) < MIN_PLANNING_X: triggered.add(2)
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Y: triggered.add(3)
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Z: triggered.add(4)
 
-    # --- 分支 5-9 ---
+    # --- branch 5-9 ---
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dx) > MIN_PLANNING_Z * 2: triggered.add(5)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dy) > MIN_PLANNING_Z * 2: triggered.add(6)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_X * 2: triggered.add(7)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Y * 2: triggered.add(8)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Z: triggered.add(9)
 
-    # --- 分支 10-15 --- (使用 simulated_y 替代 self.y)
+    # --- branch 10-15 --- ( simulated_y  self.y)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 10: triggered.add(10)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 30: triggered.add(11)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 40: triggered.add(12)
@@ -307,7 +307,7 @@ def execute_Tr(dx: int, dy: int, dz: int):
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dx < 20: triggered.add(14)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dz < 20: triggered.add(15)
 
-    # --- 分支 16-21 ---
+    # --- branch 16-21 ---
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dx) > CRITICAL_X_VELOCITY * 1.5: triggered.add(16)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dz) > CRITICAL_X_VELOCITY * 1.5: triggered.add(17)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_X_VELOCITY: triggered.add(18)
@@ -315,7 +315,7 @@ def execute_Tr(dx: int, dy: int, dz: int):
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Z_VELOCITY * 1.5: triggered.add(20)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Y_VELOCITY * 1.5: triggered.add(21)
 
-    # --- 分支 22-29 --- (使用 current_x, current_y, current_z 替代未定义的变量)
+    # --- branch 22-29 --- ( current_x, current_y, current_z )
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_X < current_z and dz > CRITICAL_Z_VELOCITY: triggered.add(
         22)
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_Y < current_z and dz > CRITICAL_Z_VELOCITY: triggered.add(
@@ -337,7 +337,7 @@ def execute_Tr(dx: int, dy: int, dz: int):
 
 
 def jaccard_similarity(set1, set2):
-    """计算Jaccard相似度"""
+    """Compute Jaccard similarity"""
     intersection = len(set1 & set2)
     union = len(set1 | set2)
     if set2.issubset(set1):
@@ -345,9 +345,9 @@ def jaccard_similarity(set1, set2):
     return intersection / union if union != 0 else 0.0
 
 
-# === 路径相似度矩阵计算 ===
+# === Path Similarity ===
 def compute_path_similarity_matrix(paths):
-    """计算路径之间的相似度矩阵"""
+    """Path Similarity"""
     n = len(paths)
     matrix = np.zeros((n, n))
     for i in range(n):
@@ -365,7 +365,7 @@ targetPaths = [
 ]
 
 
-# === 路径分组 ===
+# === Path  ===
 def group_paths_by_similarity(paths):
     sim_matrix = compute_path_similarity_matrix(paths)
     avg_sim_scores = np.mean(sim_matrix, axis=1)
@@ -381,7 +381,7 @@ def group_paths_by_similarity(paths):
     return similar_group, isolated_group
 
 
-# === 优先经验回放池（添加去重功能）===
+# === ()===
 class PrioritizedExperienceReplay:
     def __init__(self, capacity=10000, alpha=0.6, beta_start=0.4, beta_frames=100000):
         self.capacity = capacity
@@ -399,11 +399,11 @@ class PrioritizedExperienceReplay:
         self.min_priority = 1.0
 
     def beta(self):
-        """计算当前的beta值（重要性采样参数）"""
+        """beta()"""
         return min(1.0, self.beta_start + (1.0 - self.beta_start) * self.frame / self.beta_frames)
 
     def append(self, experience):
-        """添加新经验，设置最大优先级"""
+        """, """
         if len(self.buffer) < self.capacity:
             self.buffer.append(experience)
         else:
@@ -415,7 +415,7 @@ class PrioritizedExperienceReplay:
         self.size = min(self.size + 1, self.capacity)
 
     def sample(self, batch_size):
-        """基于优先级进行采样，并进行去重处理"""
+        """, """
         if self.size < batch_size:
             return [], [], []
 
@@ -423,10 +423,10 @@ class PrioritizedExperienceReplay:
         probs = priorities ** self.alpha
         probs /= probs.sum()
 
-        # 采样时设置replace=False避免重复
+        # replace=False
         indices = np.random.choice(self.size, batch_size, p=probs, replace=False)
 
-        # 去重处理：基于状态去重
+        # : 
         unique_batch = []
         unique_indices = []
         seen_states = set()
@@ -434,7 +434,7 @@ class PrioritizedExperienceReplay:
         for idx in indices:
             experience = self.buffer[idx]
             state_tensor = experience[0]
-            # 将状态转换为可哈希的元组形式
+            # 
             state_tuple = tuple(state_tensor.cpu().numpy().flatten())
 
             if state_tuple not in seen_states:
@@ -442,7 +442,7 @@ class PrioritizedExperienceReplay:
                 unique_batch.append(experience)
                 unique_indices.append(idx)
 
-        # 如果去重后样本不足，从剩余样本中补充
+        # , 
         if len(unique_batch) < batch_size:
             remaining_indices = [i for i in range(self.size) if i not in unique_indices]
             if remaining_indices:
@@ -477,7 +477,7 @@ class PrioritizedExperienceReplay:
         return unique_batch, unique_indices, weights
 
     def update_priorities(self, indices, priorities):
-        """更新优先级"""
+        """"""
         for idx, priority in zip(indices, priorities):
             if idx < self.size:
                 self.priorities[idx] = priority
@@ -485,7 +485,7 @@ class PrioritizedExperienceReplay:
                 self.min_priority = min(self.min_priority, priority)
 
     def get_priority_statistics(self):
-        """获取优先级统计信息"""
+        """"""
         if self.size == 0:
             return None
 
@@ -507,7 +507,7 @@ class PrioritizedExperienceReplay:
         return self.size
 
     def get_high_reward_samples(self, target_path, num_samples=20):
-        """获取高奖励样本用于测试"""
+        """"""
         if len(self.buffer) == 0:
             return []
 
@@ -515,7 +515,7 @@ class PrioritizedExperienceReplay:
         for experience in self.buffer:
             state_tensor = experience[0]
             state_tuple = tuple(state_tensor.cpu().numpy().flatten().astype(int))
-            triggered = execute_Tr(*state_tuple)  # 解包为 dx, dy, dz
+            triggered = execute_Tr(*state_tuple)  #  dx, dy, dz
             new_reward = compute_reward(state_tuple, target_path, triggered, None, None)
             sim = jaccard_similarity(triggered, target_path)
             samples_with_recalculated_scores.append((state_tuple, new_reward, sim, triggered))
@@ -535,7 +535,7 @@ def load_path_data(file_path):
     return path_data
 
 
-# === DQN网络 ===
+# === DQN ===
 class DQN(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(DQN, self).__init__()
@@ -549,7 +549,7 @@ class DQN(nn.Module):
         return self.fc3(x)
 
 
-# === 优先经验回放DQN Agent（添加归一化）===
+# === DQN Agent()===
 class PrioritizedDQNAgent:
     def __init__(self, state_dim, action_dim, replay_buffer, gamma=0.99, epsilon=1.0,
                  epsilon_decay=0.995, epsilon_min=0.1, learning_rate=0.001):
@@ -569,26 +569,26 @@ class PrioritizedDQNAgent:
 
     def decode_action(self, action_idx):
         """
-        解码动作索引为状态变化量
-        动作空间：30个动作 = 3个维度 × 10个变化量
-        - 维度0: dx (1-50)
-        - 维度1: dy (1-50)
-        - 维度2: dz (1-50)
+        
+        : 30 = 3 x 10
+        - 0: dx (1-50)
+        - 1: dy (1-50)
+        - 2: dz (1-50)
 
-        变化量基于最大值的百分比：
-        - dx, dy, dz: ±35(70%), ±25(50%), ±10(20%), ±5(10%), ±2(5%)（基于50的比例）
+        : 
+        - dx, dy, dz: +/-35(70%), +/-25(50%), +/-10(20%), +/-5(10%), +/-2(5%)(50)
         """
-        # 所有维度使用相同的变化值：基于50的比例
+        # : 50
         delta_values = [35, 25, 10, 5, 2, -2, -5, -10, -25, -35]
 
         dim = action_idx // 10
         delta_idx = action_idx % 10
 
-        if dim == 0:  # dx维度
+        if dim == 0:  # dx
             return (delta_values[delta_idx], 0, 0)
-        elif dim == 1:  # dy维度
+        elif dim == 1:  # dy
             return (0, delta_values[delta_idx], 0)
-        elif dim == 2:  # dz维度
+        elif dim == 2:  # dz
             return (0, 0, delta_values[delta_idx])
         else:
             return (0, 0, 0)
@@ -596,7 +596,7 @@ class PrioritizedDQNAgent:
     def act(self, state):
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
-        # 在act之前归一化状态
+        # act
         normalized_state = normalize_state(state)
         state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -604,8 +604,8 @@ class PrioritizedDQNAgent:
         return torch.argmax(q_values, dim=1).item()
 
     def store_transition(self, state, action, reward, next_state, done):
-        """存储转换，计算TD误差用于优先级（使用归一化状态）"""
-        # 归一化状态
+        """, TD()"""
+        # 
         normalized_state = normalize_state(state)
         normalized_next_state = normalize_state(next_state)
 
@@ -623,7 +623,7 @@ class PrioritizedDQNAgent:
         return td_error
 
     def train(self, batch_size=32):
-        """优先经验回放训练（状态已在存储时归一化）"""
+        """()"""
         if len(self.replay_buffer) < batch_size:
             return
 
@@ -633,7 +633,7 @@ class PrioritizedDQNAgent:
 
         states, actions, rewards, next_states, dones, _ = zip(*batch)
 
-        # 状态已经是归一化后的tensor，直接使用
+        # tensor, 
         states = torch.tensor(np.array([s.cpu().numpy().flatten() for s in states]), dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.long).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
@@ -663,7 +663,7 @@ class PrioritizedDQNAgent:
         self.target_model.load_state_dict(self.model.state_dict())
 
 
-# === 样本生成函数===
+# === Sample generation===
 def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, top_k=200):
     def jaccard_similarity_local(a, b):
         if not a and not b:
@@ -671,7 +671,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
         return len(a & b) / len(a | b) if a | b else 0.0
 
     def compute_robustness(state, path):
-        base = execute_Tr(*state)  # 解包为 dx, dy, dz
+        base = execute_Tr(*state)  #  dx, dy, dz
         if not base:
             return 0.0
         rob, neighbors = 0.0, 0
@@ -684,7 +684,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
                     if not is_valid_state(neighbor_state):
                         continue
                     neighbor = clip_state(neighbor_state)
-                    n_trig = execute_Tr(*neighbor)  # 解包为 dx, dy, dz
+                    n_trig = execute_Tr(*neighbor)  #  dx, dy, dz
                     if not n_trig:
                         continue
                     rob += jaccard_similarity_local(base, n_trig)
@@ -701,7 +701,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
                 dx, dy, dz = s[0]
                 f.write(f"{dx} {dy} {dz}\t{s[1]:.4f}\t{s[2]:.4f}\t{s[3]:.4f}\t{s[4]:.4f}\n")
 
-    base_dir = r"D:\实验\CNN\DQNNEW\path_samples_prioritized"
+    base_dir = r"D:\Experiment\CNN\DQNNEW\path_samples_prioritized"
     for path_idx in similar_group_indices:
         path = targetPaths[path_idx]
         samples = []
@@ -713,7 +713,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
                 np.random.randint(dy_min, dy_max + 1),
                 np.random.randint(dz_min, dz_max + 1)
             )
-            triggered = execute_Tr(*state)  # 解包为 dx, dy, dz
+            triggered = execute_Tr(*state)  #  dx, dy, dz
             if not triggered:
                 continue
             sim = jaccard_similarity_local(triggered, path)
@@ -726,7 +726,7 @@ def generate_samples_for_similar_paths(similar_group_indices, num_total=2000, to
             save_samples(path_id=path_idx + 1, samples=samples[:top_k], base_dir=base_dir)
 
 
-# === 第一阶段训练函数===
+# === Run ===
 def prioritized_generate_and_train_for_similar_paths(agent, similar_group, path_documents, episodes=500,
                                                      batch_size=32, steps_per_test=3, replay_times=1,
                                                      is_isolated=False):
@@ -747,7 +747,7 @@ def prioritized_generate_and_train_for_similar_paths(agent, similar_group, path_
             path_data = load_path_data(file_path)
             target_path = targetPaths[path_idx]
 
-            # 训练参数
+            # 
             BATCH_SIZE = 50
             N_SAMPLES = 200
             N_STEPS = 3
@@ -781,7 +781,7 @@ def prioritized_generate_and_train_for_similar_paths(agent, similar_group, path_
                             if random.random() < agent.epsilon:
                                 action = random.choice(legal_actions)
                             else:
-                                # 归一化状态后传入模型
+                                # 
                                 normalized_state = normalize_state(state)
                                 state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(
                                     device)
@@ -792,7 +792,7 @@ def prioritized_generate_and_train_for_similar_paths(agent, similar_group, path_
                             ddx, ddy, ddz = agent.decode_action(action)
                             next_state = clip_state((state[0] + ddx, state[1] + ddy, state[2] + ddz))
 
-                            triggered = execute_Tr(*next_state)  # 解包为 dx, dy, dz
+                            triggered = execute_Tr(*next_state)  #  dx, dy, dz
                             reward = compute_reward(next_state, target_path, triggered, prev_triggered, prev_state)
                             done = (step == N_STEPS - 1)
 
@@ -840,8 +840,8 @@ def prioritized_generate_and_train_for_similar_paths(agent, similar_group, path_
 
 def generate_samples_for_isolated_paths_prioritized(agent_similar, isolated_group_indices, num_total=2000, top_k=200):
     def compute_q_value_normalized_complement(state, agent):
-        """计算归一化后的Q值补值"""
-        # 归一化状态
+        """Q"""
+        # 
         normalized_state = normalize_state(state)
         state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -862,7 +862,7 @@ def generate_samples_for_isolated_paths_prioritized(agent_similar, isolated_grou
         return complement_q
 
     def compute_robustness(state, path):
-        base = execute_Tr(*state)  # 解包为 dx, dy, dz
+        base = execute_Tr(*state)  #  dx, dy, dz
         if not base:
             return 0.0
         rob, neighbors = 0.0, 0
@@ -875,7 +875,7 @@ def generate_samples_for_isolated_paths_prioritized(agent_similar, isolated_grou
                     if not is_valid_state(neighbor_state):
                         continue
                     neighbor = clip_state(neighbor_state)
-                    n_trig = execute_Tr(*neighbor)  # 解包为 dx, dy, dz
+                    n_trig = execute_Tr(*neighbor)  #  dx, dy, dz
                     if not n_trig:
                         continue
                     rob += jaccard_similarity(base, n_trig)
@@ -892,7 +892,7 @@ def generate_samples_for_isolated_paths_prioritized(agent_similar, isolated_grou
                 dx, dy, dz = s[0]
                 f.write(f"{dx} {dy} {dz}\t{s[1]:.4f}\t{s[2]:.4f}\t{s[3]:.4f}\t{s[4]:.4f}\t{s[5]:.4f}\n")
 
-    base_dir = r"D:\实验\CNN\DQNNEW\path_samples_prioritized"
+    base_dir = r"D:\Experiment\CNN\DQNNEW\path_samples_prioritized"
     for path_idx in isolated_group_indices:
         path = targetPaths[path_idx]
         samples = []
@@ -904,7 +904,7 @@ def generate_samples_for_isolated_paths_prioritized(agent_similar, isolated_grou
                 np.random.randint(dy_min, dy_max + 1),
                 np.random.randint(dz_min, dz_max + 1)
             )
-            triggered = execute_Tr(*state)  # 解包为 dx, dy, dz
+            triggered = execute_Tr(*state)  #  dx, dy, dz
             if not triggered:
                 continue
             sim = jaccard_similarity(triggered, path)
@@ -918,7 +918,7 @@ def generate_samples_for_isolated_paths_prioritized(agent_similar, isolated_grou
             save_samples(path_id=path_idx + 1, samples=samples[:top_k], base_dir=base_dir)
 
 
-# === 第二阶段训练函数===
+# === Run ===
 def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isolated, similar_group,
                                                       isolated_group, path_documents, episodes=500, batch_size=32,
                                                       is_isolated=True):
@@ -945,7 +945,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
             stage1_samples = stage1_samples_pool.get(path_idx, [])
             target_path = targetPaths[path_idx]
 
-            # 训练参数
+            # 
             BATCH_SIZE = 50
             N_SAMPLES_STAGE2 = min(140, len(stage2_path_data))
             N_SAMPLES_STAGE1 = min(60, len(stage1_samples))
@@ -955,7 +955,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
             PATH_REPEAT = 5
 
             for repeat in range(PATH_REPEAT):
-                # Stage2数据训练
+                # Stage2
                 for batch_idx in range(N_BATCHES_STAGE2):
                     batch_start = batch_idx * BATCH_SIZE
                     batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES_STAGE2)
@@ -983,7 +983,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
                             if random.random() < agent_isolated.epsilon:
                                 action = random.choice(legal_actions)
                             else:
-                                # 归一化状态后传入模型
+                                # 
                                 normalized_state = normalize_state(state)
                                 state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(
                                     device)
@@ -994,7 +994,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
                             ddx, ddy, ddz = agent_isolated.decode_action(action)
                             next_state = clip_state((state[0] + ddx, state[1] + ddy, state[2] + ddz))
 
-                            triggered = execute_Tr(*next_state)  # 解包为 dx, dy, dz
+                            triggered = execute_Tr(*next_state)  #  dx, dy, dz
                             reward = compute_reward(next_state, target_path, triggered, prev_triggered, prev_state)
 
                             if target_path.issubset(triggered):
@@ -1029,7 +1029,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
                         if global_replay_count % 2 == 0:
                             agent_isolated.update_target_model()
 
-                # Stage1数据训练
+                # Stage1
                 if stage1_samples:
                     for batch_idx in range(N_BATCHES_STAGE1):
                         batch_start = batch_idx * BATCH_SIZE
@@ -1059,7 +1059,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
                                 if random.random() < agent_isolated.epsilon:
                                     action = random.choice(legal_actions)
                                 else:
-                                    # 归一化状态后传入模型
+                                    # 
                                     normalized_state = normalize_state(state)
                                     state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(
                                         device)
@@ -1070,7 +1070,7 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
                                 ddx, ddy, ddz = agent_isolated.decode_action(action)
                                 next_state = clip_state((state[0] + ddx, state[1] + ddy, state[2] + ddz))
 
-                                triggered = execute_Tr(*next_state)  # 解包为 dx, dy, dz
+                                triggered = execute_Tr(*next_state)  #  dx, dy, dz
                                 reward = compute_reward(next_state, target_path, triggered, prev_triggered, prev_state)
                                 reward *= 0.8
 
@@ -1118,9 +1118,9 @@ def prioritized_generate_and_train_for_isolated_paths(agent_similar, agent_isola
     return agent_isolated
 
 
-# === Excel导出函数（追加模式）===
+# === Excel()===
 def append_performance_metrics_to_excel(metrics_collector, filepath, run_number):
-    """追加性能指标到Excel表格"""
+    """MetricExcel"""
     avg_td_error = np.mean(metrics_collector.td_errors) if metrics_collector.td_errors else 0
     total_reward = metrics_collector.total_reward
     action_improvement_rate = np.mean(
@@ -1136,36 +1136,36 @@ def append_performance_metrics_to_excel(metrics_collector, filepath, run_number)
     avg_importance_weight = np.mean(metrics_collector.importance_weights) if metrics_collector.importance_weights else 0
 
     new_row = {
-        '运行次数': f"第{run_number}次",
-        '最终样本平均相似度': f"{avg_final_similarity:.4f}",
-        '总累积奖励': f"{total_reward:,.2f}",
-        '平均episode奖励': f"{avg_episode_reward:,.4f}",
-        '奖励标准差': f"{reward_std:,.4f}",
-        '平均TD误差': f"{avg_td_error:.4f}",
-        '动作改进率': f"{action_improvement_rate:.4f}",
-        '动作改进率(%)': f"{action_improvement_rate * 100:.2f}%",
-        '总训练步数': f"{metrics_collector.step_count:,}",
-        '最终输出样本数': f"{len(metrics_collector.final_output_similarities)}",
-        '训练总时间(秒)': f"{training_time:.2f}",
-        '训练总时间(分钟)': f"{training_time / 60:.2f}",
-        '平均内存使用(MB)': f"{avg_memory_usage:.2f}",
-        '每步平均耗时(ms)': f"{per_step_time:.2f}",
-        '平均优先级': f"{avg_priority:.4f}",
-        '平均重要性权重': f"{avg_importance_weight:.4f}"
+        'Run': f"Run {run_number}",
+        'final samplesAverage Similarity': f"{avg_final_similarity:.4f}",
+        '': f"{total_reward:,.2f}",
+        'episode': f"{avg_episode_reward:,.4f}",
+        'Standard deviation': f"{reward_std:,.4f}",
+        'TD': f"{avg_td_error:.4f}",
+        '': f"{action_improvement_rate:.4f}",
+        '(%)': f"{action_improvement_rate * 100:.2f}%",
+        '': f"{metrics_collector.step_count:,}",
+        'final samples': f"{len(metrics_collector.final_output_similarities)}",
+        'Training Total Time( seconds)': f"{training_time:.2f}",
+        'Training Total Time( minutes)': f"{training_time / 60:.2f}",
+        '(MB)': f"{avg_memory_usage:.2f}",
+        '(ms)': f"{per_step_time:.2f}",
+        '': f"{avg_priority:.4f}",
+        '': f"{avg_importance_weight:.4f}"
     }
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     if os.path.exists(filepath):
-        df = pd.read_excel(filepath, sheet_name='性能指标')
+        df = pd.read_excel(filepath, sheet_name='Metric')
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     else:
         df = pd.DataFrame([new_row])
 
     with pd.ExcelWriter(filepath, engine='openpyxl', mode='w') as writer:
-        df.to_excel(writer, sheet_name='性能指标', index=False)
+        df.to_excel(writer, sheet_name='Metric', index=False)
         workbook = writer.book
-        worksheet = writer.sheets['性能指标']
+        worksheet = writer.sheets['Metric']
 
         worksheet.column_dimensions['A'].width = 15
         for col in ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']:
@@ -1180,12 +1180,12 @@ def append_performance_metrics_to_excel(metrics_collector, filepath, run_number)
             for cell in row:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    print(f"第{run_number}次运行的性能指标已追加到: {filepath}")
+    print(f"Run {run_number} runMetric: {filepath}")
 
 
 def append_final_samples_to_excel(agent_similar, agent_isolated, similar_group, isolated_group, targetPaths, filepath,
                                   run_number):
-    """追加样本数据到Excel表格"""
+    """Excel"""
     new_samples = []
 
     for path_idx in similar_group:
@@ -1194,18 +1194,18 @@ def append_final_samples_to_excel(agent_similar, agent_isolated, similar_group, 
 
         for state_tuple, reward, sim, triggered in high_reward_samples:
             new_samples.append({
-                '运行次数': f"第{run_number}次",
-                '路径组': '相似路径组',
-                '路径编号': path_idx + 1,
+                'Run': f"Run {run_number}",
+                'Path ': 'Similar path group',
+                'Path ID': path_idx + 1,
                 'dx': state_tuple[0],
                 'dy': state_tuple[1],
                 'dz': state_tuple[2],
-                '相似度': f"{sim:.4f}",
-                '奖励值': f"{reward:.2f}",
-                '触发规则数': len(triggered),
-                '目标规则数': len(target_path),
-                '触发规则': str(sorted(triggered)),
-                '目标规则': str(sorted(target_path))
+                'Similarity': f"{sim:.4f}",
+                '': f"{reward:.2f}",
+                '': len(triggered),
+                '': len(target_path),
+                '': str(sorted(triggered)),
+                '': str(sorted(target_path))
             })
 
     for path_idx in isolated_group:
@@ -1214,32 +1214,32 @@ def append_final_samples_to_excel(agent_similar, agent_isolated, similar_group, 
 
         for state_tuple, reward, sim, triggered in high_reward_samples:
             new_samples.append({
-                '运行次数': f"第{run_number}次",
-                '路径组': '孤岛路径组',
-                '路径编号': path_idx + 1,
+                'Run': f"Run {run_number}",
+                'Path ': 'Isolated path group',
+                'Path ID': path_idx + 1,
                 'dx': state_tuple[0],
                 'dy': state_tuple[1],
                 'dz': state_tuple[2],
-                '相似度': f"{sim:.4f}",
-                '奖励值': f"{reward:.2f}",
-                '触发规则数': len(triggered),
-                '目标规则数': len(target_path),
-                '触发规则': str(sorted(triggered)),
-                '目标规则': str(sorted(target_path))
+                'Similarity': f"{sim:.4f}",
+                '': f"{reward:.2f}",
+                '': len(triggered),
+                '': len(target_path),
+                '': str(sorted(triggered)),
+                '': str(sorted(target_path))
             })
 
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     if os.path.exists(filepath):
-        df = pd.read_excel(filepath, sheet_name='最终样本数据')
+        df = pd.read_excel(filepath, sheet_name='final samples')
         df = pd.concat([df, pd.DataFrame(new_samples)], ignore_index=True)
     else:
         df = pd.DataFrame(new_samples)
 
     with pd.ExcelWriter(filepath, engine='openpyxl', mode='w') as writer:
-        df.to_excel(writer, sheet_name='最终样本数据', index=False)
+        df.to_excel(writer, sheet_name='final samples', index=False)
         workbook = writer.book
-        worksheet = writer.sheets['最终样本数据']
+        worksheet = writer.sheets['final samples']
 
         column_widths = {
             'A': 12, 'B': 15, 'C': 12, 'D': 10, 'E': 10, 'F': 10,
@@ -1257,27 +1257,27 @@ def append_final_samples_to_excel(agent_similar, agent_isolated, similar_group, 
             for cell in row:
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-    print(f"第{run_number}次运行的样本数据已追加到: {filepath}")
+    print(f"Run {run_number} run: {filepath}")
 
 
-# === 单次运行函数 ===
+# ===  run ===
 def run_single_experiment(run_number, results_save_dir):
-    """执行单次实验"""
+    """"""
     print(f"\n{'=' * 80}")
-    print(f"开始第 {run_number} 次运行（有优先权DQN）")
+    print(f"Start run  {run_number}  run(DQN)")
     print(f"{'=' * 80}\n")
 
-    # 重置指标收集器
+    # Metric
     prioritized_metrics.reset()
     prioritized_metrics.start_training()
 
     model_path_similar = os.path.join(results_save_dir, f"run{run_number}_similar.pth")
     model_path_isolated = os.path.join(results_save_dir, f"run{run_number}_isolated.pth")
-    path_documents = r"D:\实验\CNN\DQNNEW\path_samples_prioritized"
+    path_documents = r"D:\Experiment\CNN\DQNNEW\path_samples_prioritized"
 
     similar_group, isolated_group = group_paths_by_similarity(targetPaths)
 
-    # 第一阶段：相似路径训练
+    # Run : Path 
     if run_number == 1:
         generate_samples_for_similar_paths(similar_group, num_total=2000, top_k=200)
 
@@ -1296,11 +1296,11 @@ def run_single_experiment(run_number, results_save_dir):
         'epsilon': agent.epsilon
     }, model_path_similar)
 
-    # 第二阶段准备：生成孤岛路径增强样本
+    # Run : Path 
     if run_number == 1:
         generate_samples_for_isolated_paths_prioritized(agent, isolated_group, num_total=2000, top_k=200)
 
-    # 第二阶段：孤岛路径训练
+    # Run : Path 
     isolated_replay_buffer = PrioritizedExperienceReplay(capacity=15000, alpha=0.6, beta_start=0.4, beta_frames=100000)
     agent_isolated = PrioritizedDQNAgent(state_dim, action_dim, isolated_replay_buffer)
 
@@ -1330,10 +1330,10 @@ def run_single_experiment(run_number, results_save_dir):
         'epsilon': agent_isolated.epsilon
     }, model_path_isolated)
 
-    # 结束计时
+    # 
     prioritized_metrics.end_training()
 
-    # 收集最终样本
+    # final samples
     for path_idx in similar_group:
         target_path = targetPaths[path_idx]
         high_reward_samples = agent.replay_buffer.get_high_reward_samples(target_path, num_samples=20)
@@ -1346,48 +1346,48 @@ def run_single_experiment(run_number, results_save_dir):
         for state_tuple, _, sim, triggered in high_reward_samples:
             prioritized_metrics.record_final_output_sample(triggered, target_path)
 
-    # 导出Excel
-    performance_excel_path = os.path.join(results_save_dir, "性能指标对比_有优先权.xlsx")
-    samples_excel_path = os.path.join(results_save_dir, "最终样本数据_有优先权.xlsx")
+    # Excel
+    performance_excel_path = os.path.join(results_save_dir, "Metric_.xlsx")
+    samples_excel_path = os.path.join(results_save_dir, "final samples_.xlsx")
 
     append_performance_metrics_to_excel(prioritized_metrics, performance_excel_path, run_number)
     append_final_samples_to_excel(agent, agent_isolated, similar_group, isolated_group, targetPaths, samples_excel_path,
                                   run_number)
 
-    # 打印本次运行的关键指标
+    #  runMetric
     avg_similarity = np.mean(
         prioritized_metrics.final_output_similarities) if prioritized_metrics.final_output_similarities else 0
     training_time = prioritized_metrics.end_time - prioritized_metrics.start_time
     avg_priority = np.mean(prioritized_metrics.priority_statistics) if prioritized_metrics.priority_statistics else 0
-    print(f"\n第 {run_number} 次运行完成:")
-    print(f"  平均相似度: {avg_similarity:.4f}")
-    print(f"  训练时间: {training_time:.2f}秒")
-    print(f"  总步数: {prioritized_metrics.step_count}")
-    print(f"  平均优先级: {avg_priority:.4f}")
+    print(f"\nRun  {run_number}  runcompleted:")
+    print(f"  Average Similarity: {avg_similarity:.4f}")
+    print(f"  Training Time: {training_time:.2f} seconds")
+    print(f"  : {prioritized_metrics.step_count}")
+    print(f"  : {avg_priority:.4f}")
 
 
 if __name__ == "__main__":
-    results_save_dir = r"D:\实验\CNN\DQNNEW\results\prioritized_results"
+    results_save_dir = r"D:\Experiment\CNN\DQNNEW\results\prioritized_results"
     os.makedirs(results_save_dir, exist_ok=True)
 
-    # 连续运行20次
+    # 20
     NUM_RUNS = 20
 
     print("=" * 80)
-    print(f"开始连续运行 {NUM_RUNS} 次有优先权DQN实验")
+    print(f" {NUM_RUNS} DQN")
     print("=" * 80)
 
     for run in range(1, NUM_RUNS + 1):
         try:
             run_single_experiment(run, results_save_dir)
         except Exception as e:
-            print(f"\n第 {run} 次运行出错: {str(e)}")
+            print(f"\nRun  {run}  run: {str(e)}")
             import traceback
 
             traceback.print_exc()
             continue
 
     print("\n" + "=" * 80)
-    print(f"所有 {NUM_RUNS} 次运行完成！")
-    print(f"结果保存在: {results_save_dir}")
+    print(f" {NUM_RUNS}  runcompleted")
+    print(f": {results_save_dir}")
     print("=" * 80)

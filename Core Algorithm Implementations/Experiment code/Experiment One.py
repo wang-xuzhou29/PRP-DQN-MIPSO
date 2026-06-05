@@ -1,6 +1,5 @@
 import random
 from typing import Set, List, Tuple, Dict
-import pandas as pd
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -137,7 +136,7 @@ class SharedExperienceReplay:
     def __len__(self):
         return len(self.buffer)
 
-    def get_high_reward_samples(self, target_path, num_samples=20):
+    def get_high_reward_samples(self, target_path, num_samples=1):
         if len(self.buffer) == 0:
             return []
 
@@ -249,7 +248,6 @@ class DQNAgentWithPER:
         self.target_model.load_state_dict(self.model.state_dict())
 
     def get_q_value(self, state):
-        """获取状态的Q值"""
         if isinstance(state, (list, tuple)):
             state = np.array(state, dtype=np.float32)
 
@@ -321,7 +319,7 @@ class QValueNormalizer:
 
         self.min_q = min(self.q_values)
         self.max_q = max(self.q_values)
-        print(f"Q值范围: [{self.min_q:.4f}, {self.max_q:.4f}]")
+        print(f"Q-value range: [{self.min_q:.4f}, {self.max_q:.4f}]")
 
     def normalize_q_value(self, q_value):
         if self.min_q is None or self.max_q is None:
@@ -334,7 +332,6 @@ class QValueNormalizer:
         return max(0.0, min(1.0, normalized))
 
 
-# === 评分函数 ===
 def length_score(path: Set[int], target: Set[int]) -> float:
     return 1 - abs(len(path) - len(target)) / max(len(path), len(target), 1)
 
@@ -388,40 +385,40 @@ def generate_random_state() -> Tuple[int, int, int]:
         random.randint(2, 100)
     )
 
-def run_isolated_path_scoring(samples_per_path: int = 500):  # 减少到500个样本
+def run_isolated_path_scoring(samples_per_path: int = 500):
     print("=" * 60)
-    print("孤岛路径四标准评分系统（优化版-减少运行时间）")
+    print("Isolated-path four-criteria scoring")
     print("=" * 60)
 
     similar_group, isolated_group = group_paths_by_similarity(targetPaths_sets)
-    print(f"相似路径组: {similar_group}")
-    print(f"孤岛路径组: {isolated_group}")
+    print(f"Similar path group: {similar_group}")
+    print(f"Isolated path group: {isolated_group}")
 
-    print("\n步骤2: 为相似路径训练DQN模型")
-    replay_buffer = SharedExperienceReplay(capacity=5000)  # 减少经验池容量
+    print("\nStep 1: Train the DQN model on similar paths")
+    replay_buffer = SharedExperienceReplay(capacity=5000)
     state_dim = 3
     action_dim = 30
     agent = DQNAgentWithPER(state_dim, action_dim, replay_buffer)
 
-    generate_samples_for_similar_paths(agent, similar_group, episodes=100)  # 减少到100 episodes
+    generate_samples_for_similar_paths(agent, similar_group, episodes=100)
 
-    print("\n步骤3: 初始化Q值归一化器")
+    print("\nStep 2: Initialize the Q-value normalizer")
     q_normalizer = QValueNormalizer()
-    sample_states = [generate_random_state() for _ in range(300)]  # 减少到300个样本
+    sample_states = [generate_random_state() for _ in range(300)]
     q_normalizer.collect_q_values(agent, sample_states)
 
-    print("\n步骤4: 孤岛路径四标准评分")
+    print("\nStep 3: Score isolated paths")
     isolated_path_scores = {}
 
     for path_idx in isolated_group:
         target_path = targetPaths_sets[path_idx]
-        print(f"\n处理孤岛路径 {path_idx + 1}: {sorted(target_path)}")
+        print(f"\nProcessing isolated path {path_idx + 1}: {sorted(target_path)}")
 
         coords = []
         path_map = {}
         scores = []
 
-        print(f"生成 {samples_per_path} 个测试样本...")
+        print(f"Generating {samples_per_path} test samples...")
         for _ in tqdm(range(samples_per_path)):
             state = generate_random_state()
             coords.append(state)
@@ -445,43 +442,33 @@ def run_isolated_path_scoring(samples_per_path: int = 500):  # 减少到500个�
             'sample_count': samples_per_path
         }
 
-        print(f"路径 {path_idx + 1} 平均得分: {avg_score:.6f}")
-        print(f"得分范围: [{min_score:.6f}, {max_score:.6f}]")
+        print(f"Path {path_idx + 1} average score: {avg_score:.6f}")
+        print(f"Score range: [{min_score:.6f}, {max_score:.6f}]")
 
     print("\n" + "=" * 60)
-    print("孤岛路径四标准评分汇总结果")
+    print("Summary of isolated-path four-criteria scores")
     print("=" * 60)
 
     all_avg_scores = []
     for path_idx, result in isolated_path_scores.items():
-        print(f"路径 {result['path_id']:2d}: 平均得分 = {result['avg_score']:.6f}")
+        print(
+            f"Path {result['path_id']:2d} | "
+            f"target_path={result['target_path']} | "
+            f"avg={result['avg_score']:.6f} | "
+            f"min={result['min_score']:.6f} | "
+            f"max={result['max_score']:.6f} | "
+            f"samples={result['sample_count']}"
+        )
         all_avg_scores.append(result['avg_score'])
 
     overall_avg = np.mean(all_avg_scores)
-    print(f"\n所有孤岛路径的整体平均得分: {overall_avg:.6f}")
-
-    # 6. 保存结果
-    results_df = pd.DataFrame([
-        {
-            'path_id': result['path_id'],
-            'target_path': str(result['target_path']),
-            'avg_score': result['avg_score'],
-            'max_score': result['max_score'],
-            'min_score': result['min_score'],
-            'sample_count': result['sample_count']
-        }
-        for result in isolated_path_scores.values()
-    ])
-
-    results_df.to_csv("isolated_path_four_criteria_scores.csv", index=False)
-    print(f"\n结果已保存至: isolated_path_four_criteria_scores.csv")
+    print(f"\nOverall average score for isolated paths: {overall_avg:.6f}")
 
     return isolated_path_scores
 
 if __name__ == '__main__':
-    print("开始执行孤岛路径四标准评分...")
+    print("Starting one scoring run for isolated paths...")
 
-    # 执行评分
     results = run_isolated_path_scoring(samples_per_path=500)
 
-    print("\n程序执行完成！")
+    print("\nProgram completed.")

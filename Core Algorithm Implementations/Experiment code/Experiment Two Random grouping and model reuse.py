@@ -14,15 +14,15 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-# === 设备设置 ===
+# === device setup ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
-# === 归一化/反归一化工具类 ===
-# === 状态变量配置：必须与 execute_Tr(dx, dy, dz) 的入参一致 ===
-# 根据 Tr 函数中的阈值，dx/dy/dz 至少要覆盖 -50~50 这一带。
-# 如果你的真实物理范围不同，只需要改这里，后面归一化、采样、clip 会自动同步。
+# === / ===
+# === :  execute_Tr(dx, dy, dz)  ===
+#  Tr , dx/dy/dz  -50~50 .
+# , , , , clip .
 STATE_RANGES = {
     'dx': (-60, 60),
     'dy': (-60, 60),
@@ -34,24 +34,24 @@ STATE_MAX = np.array([STATE_RANGES[name][1] for name in STATE_NAMES], dtype=np.i
 
 
 def clip_state(state):
-    """把状态限制在 dx/dy/dz 的有效范围内，并转成 int tuple。"""
+    """ dx/dy/dz ,  int tuple."""
     return tuple(np.clip(np.array(state, dtype=np.int32), STATE_MIN, STATE_MAX).astype(int))
 
 
 def random_state():
-    """按照 dx/dy/dz 的有效范围随机生成一个原始状态。"""
+    """ dx/dy/dz ."""
     return tuple(random.randint(STATE_RANGES[name][0], STATE_RANGES[name][1]) for name in STATE_NAMES)
 
 
 class StateNormalizer:
-    """状态归一化器：将 dx/dy/dz 映射到 [0, 1]。"""
+    """:  dx/dy/dz  [0, 1]."""
 
     def __init__(self, ranges=None):
         self.ranges = ranges or STATE_RANGES
         self.names = STATE_NAMES
 
     def normalize(self, state):
-        """原始状态 -> 归一化状态。"""
+        """ -> ."""
         state = np.array(state, dtype=np.float32)
         normalized = np.zeros_like(state, dtype=np.float32)
         for i, name in enumerate(self.names):
@@ -60,7 +60,7 @@ class StateNormalizer:
         return normalized
 
     def denormalize(self, normalized_state):
-        """归一化状态 -> 原始 dx/dy/dz，并限制在有效范围内。"""
+        """ ->  dx/dy/dz, ."""
         normalized_state = np.array(normalized_state, dtype=np.float32)
         denormalized = np.zeros_like(normalized_state, dtype=np.float32)
         for i, name in enumerate(self.names):
@@ -70,11 +70,11 @@ class StateNormalizer:
         return denormalized
 
 
-# 全局归一化器
+# 
 normalizer = StateNormalizer()
 
 
-# === 简化的奖励函数 ===
+# === reward function ===
 def compute_reward(state, target_path, triggered, prev_triggered=None, prev_state=None):
     sim = jaccard_similarity(triggered, target_path)
     reward = sim * 10
@@ -84,12 +84,12 @@ def compute_reward(state, target_path, triggered, prev_triggered=None, prev_stat
 
 
 def execute_Tr(dx: int, dy: int, dz: int):
-    """执行 Tr 规则。DQN 的状态变量就是这里的 dx、dy、dz。
+    """ Tr .DQN  dx, dy, dz.
 
-    注意：下面 current_x/current_y/current_z 仍然是内部模拟变量，不属于 DQN 状态。
-    如果你的真实 Tr 规则需要 current_x/current_y/current_z，建议把状态维度扩展为 6 维。
+    :  current_x/current_y/current_z ,  DQN .
+     Tr  current_x/current_y/current_z,  6 .
     """
-    # --- 1. 常量与配置 ---
+    # --- 1. constants and configuration ---
     MAX_GRID_SIZE = 500.0
     TARGET_X, TARGET_Y, TARGET_Z = 450.0, 450.0, 200.0
 
@@ -102,27 +102,27 @@ def execute_Tr(dx: int, dy: int, dz: int):
 
     triggered = set()
 
-    # 原代码中 current_x/current_y/current_z 未定义。这里仍按原思路用内部模拟值。
-    # 但这会导致同一个 (dx, dy, dz) 每次触发结果可能不同。若要求严格可复现，应改成外部输入或确定性计算。
+    #  current_x/current_y/current_z ..
+    #  (dx, dy, dz) ., .
     current_x = random.uniform(0.0, MAX_GRID_SIZE)
     current_y = random.uniform(0.0, MAX_GRID_SIZE)
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
     simulated_y = current_y
 
-    # --- 分支 1-4 ---
+    # --- branch 1-4 ---
     if (abs(dx) < MIN_PLANNING_X) != (abs(dy) < MIN_PLANNING_X): triggered.add(1)
     if (abs(dx) < MIN_PLANNING_X) != (abs(dz) < MIN_PLANNING_X): triggered.add(2)
     if (abs(dx) < MIN_PLANNING_X) != (abs(dx) < MIN_PLANNING_Y): triggered.add(3)
     if (abs(dx) < MIN_PLANNING_X) != (abs(dx) < MIN_PLANNING_Z): triggered.add(4)
 
-    # --- 分支 5-9 ---
+    # --- branch 5-9 ---
     if (abs(dz) > MIN_PLANNING_Z * 2) != (abs(dx) > MIN_PLANNING_Z * 2): triggered.add(5)
     if (abs(dz) > MIN_PLANNING_Z * 2) != (abs(dy) > MIN_PLANNING_Z * 2): triggered.add(6)
     if (abs(dz) > MIN_PLANNING_Z * 2) != (abs(dz) > MIN_PLANNING_X * 2): triggered.add(7)
     if (abs(dz) > MIN_PLANNING_Z * 2) != (abs(dz) > MIN_PLANNING_Y * 2): triggered.add(8)
     if (abs(dz) > MIN_PLANNING_Z * 2) != (abs(dz) > MIN_PLANNING_Z): triggered.add(9)
 
-    # --- 分支 10-15 ---
+    # --- branch 10-15 ---
     if ((TARGET_Y > simulated_y) and (dy < 20)) != ((TARGET_Y > simulated_y) and (dy < 10)): triggered.add(10)
     if ((TARGET_Y > simulated_y) and (dy < 20)) != ((TARGET_Y > simulated_y) and (dy < 30)): triggered.add(11)
     if ((TARGET_Y > simulated_y) and (dy < 20)) != ((TARGET_Y > simulated_y) and (dy < 40)): triggered.add(12)
@@ -130,7 +130,7 @@ def execute_Tr(dx: int, dy: int, dz: int):
     if ((TARGET_Y > simulated_y) and (dy < 20)) != ((TARGET_Y > simulated_y) and (dx < 20)): triggered.add(14)
     if ((TARGET_Y > simulated_y) and (dy < 20)) != ((TARGET_Y > simulated_y) and (dz < 20)): triggered.add(15)
 
-    # --- 分支 16-21 ---
+    # --- branch 16-21 ---
     if (abs(dy) > CRITICAL_X_VELOCITY * 1.5) != (abs(dx) > CRITICAL_X_VELOCITY * 1.5): triggered.add(16)
     if (abs(dy) > CRITICAL_X_VELOCITY * 1.5) != (abs(dz) > CRITICAL_X_VELOCITY * 1.5): triggered.add(17)
     if (abs(dy) > CRITICAL_X_VELOCITY * 1.5) != (abs(dy) > CRITICAL_X_VELOCITY): triggered.add(18)
@@ -138,7 +138,7 @@ def execute_Tr(dx: int, dy: int, dz: int):
     if (abs(dy) > CRITICAL_X_VELOCITY * 1.5) != (abs(dy) > CRITICAL_Z_VELOCITY * 1.5): triggered.add(20)
     if (abs(dy) > CRITICAL_X_VELOCITY * 1.5) != (abs(dy) > CRITICAL_Y_VELOCITY * 1.5): triggered.add(21)
 
-    # --- 分支 22-29 ---
+    # --- branch 22-29 ---
     if ((TARGET_Z < current_z) and (dz > CRITICAL_Z_VELOCITY)) != ((TARGET_X < current_z) and (dz > CRITICAL_Z_VELOCITY)): triggered.add(22)
     if ((TARGET_Z < current_z) and (dz > CRITICAL_Z_VELOCITY)) != ((TARGET_Y < current_z) and (dz > CRITICAL_Z_VELOCITY)): triggered.add(23)
     if ((TARGET_Z < current_z) and (dz > CRITICAL_Z_VELOCITY)) != ((TARGET_Z < current_x) and (dz > CRITICAL_Z_VELOCITY)): triggered.add(24)
@@ -157,7 +157,7 @@ target_paths = [
 {5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 29}
 ]
 
-# 转换为集合
+# 
 target_paths = [set(path) for path in target_paths]
 
 
@@ -195,26 +195,26 @@ def group_paths_by_similarity(paths):
     return similar_group, isolated_group
 
 
-# === 随机分组配置 ===
-# 默认：随机分成两个组，第一组数量等于原“相似度分组”方法得到的相似组数量。
-# 如果希望每次运行时通过键盘输入第一组数量，将 USE_KEYBOARD_INPUT_GROUP_SIZE 改为 True。
-# 如果希望随机结果可复现，将 RANDOM_GROUP_SEED 设置为固定整数，例如 2026；如果希望每次随机不同，保持 None。
+# === random grouping ===
+# : , Run "Similarity".
+#  runRun ,  USE_KEYBOARD_INPUT_GROUP_SIZE  True.
+# ,  RANDOM_GROUP_SEED ,  2026; ,  None.
 USE_KEYBOARD_INPUT_GROUP_SIZE = False
 RANDOM_GROUP_SEED = None
 
 
 def group_paths_randomly(paths, use_keyboard_input=False, seed=None):
     """
-    随机分组函数：只分两个组。
-    - 随机组1：先训练模型；
-    - 随机组2：复用随机组1模型进行样本评分和迁移训练。
+    random grouping: .
+    - Random group1: ; 
+    - Random group2: Random group1.
 
-    默认随机组1数量 = 原 group_paths_by_similarity(paths) 得到的第一组数量，
-    这样可以保证随机分组与原方法的两组规模一致，只改变路径归属方式。
+    Random group1 =  group_paths_by_similarity(paths) Run , 
+    random grouping, Path .
     """
     n_paths = len(paths)
 
-    # 用原相似度分组方法仅获取组规模，不再按相似度决定路径归属。
+    # Similarity, SimilarityPath .
     original_group1, original_group2 = group_paths_by_similarity(paths)
     default_group1_size = len(original_group1)
 
@@ -223,8 +223,8 @@ def group_paths_randomly(paths, use_keyboard_input=False, seed=None):
     if use_keyboard_input:
         while True:
             user_input = input(
-                f"请输入随机组1的路径数量，范围 1~{n_paths - 1}；"
-                f"直接回车则使用原方法数量 {default_group1_size}："
+                f"Random group1Number of Paths,  1~{n_paths - 1}; "
+                f" {default_group1_size}: "
             ).strip()
 
             if user_input == "":
@@ -235,12 +235,12 @@ def group_paths_randomly(paths, use_keyboard_input=False, seed=None):
                 group1_size = int(user_input)
                 if 1 <= group1_size <= n_paths - 1:
                     break
-                print(f"输入无效：随机组1数量必须在 1~{n_paths - 1} 之间。")
+                print(f": Random group1 1~{n_paths - 1} .")
             except ValueError:
-                print("输入无效：请输入整数，或直接回车使用默认数量。")
+                print(": , .")
 
     if not (1 <= group1_size <= n_paths - 1):
-        raise ValueError(f"随机组1数量必须在 1~{n_paths - 1} 之间，当前为 {group1_size}")
+        raise ValueError(f"Random group1 1~{n_paths - 1} ,  {group1_size}")
 
     all_indices = list(range(n_paths))
     rng = random.Random(seed) if seed is not None else random
@@ -253,7 +253,7 @@ def group_paths_randomly(paths, use_keyboard_input=False, seed=None):
 
 
 def compute_robustness(state, path):
-    """计算鲁棒性（输入为原始值）"""
+    """()"""
     dx, dy, dz = state
     base = execute_Tr(dx, dy, dz)
     if not base:
@@ -265,7 +265,7 @@ def compute_robustness(state, path):
             for dz in [-1, 0, 1]:
                 if dw == dt == dz == 0:
                     continue
-                # 使用新的变量范围进行限制
+                # 
                 neighbor = np.clip(np.array(state) + np.array([dw, dt, dz]),
                                    STATE_MIN, STATE_MAX)
                 neighbor = tuple(neighbor)
@@ -279,12 +279,12 @@ def compute_robustness(state, path):
 
 
 def compute_q_value_score(state, similar_model):
-    """计算Q值分数（输入为原始值）"""
+    """Q()"""
     if similar_model is None:
         return 0.0
 
     try:
-        # 归一化后输入模型
+        # 
         normalized_state = normalizer.normalize(state)
         state_tensor = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -311,7 +311,7 @@ def generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k
                 f.write(
                     f"{dx} {dy} {dz}\t{s['score']:.4f}\t{s['similarity']:.4f}\t{s['length_diff']:.4f}\t{s['robustness']:.4f}\n")
 
-    base_dir = r"D:\实验\CNN\DQNNEW\path_samples_grouped"
+    base_dir = r"D:\Experiment\CNN\DQNNEW\path_samples_grouped"
 
     for path_idx in similar_group:
         path = target_paths[path_idx]
@@ -321,7 +321,7 @@ def generate_samples_for_similar_paths(similar_group, num_candidates=2000, top_k
 
         while len(candidate_samples) < num_candidates and attempts < num_candidates * 10:
             attempts += 1
-            # 使用 dx/dy/dz 的变量范围生成状态
+            #  dx/dy/dz 
             state = random_state()
             dx, dy, dz = state
 
@@ -368,7 +368,7 @@ def generate_samples_for_isolated_paths(isolated_group, similar_model, num_candi
                 f.write(
                     f"{dx} {dy} {dz}\t{s['score']:.4f}\t{s['similarity']:.4f}\t{s['length_diff']:.4f}\t{s['robustness']:.4f}\t{s['q_value_score']:.4f}\n")
 
-    base_dir = r"D:\实验\CNN\DQNNEW\path_samples_grouped"
+    base_dir = r"D:\Experiment\CNN\DQNNEW\path_samples_grouped"
 
     for path_idx in isolated_group:
         path = target_paths[path_idx]
@@ -378,7 +378,7 @@ def generate_samples_for_isolated_paths(isolated_group, similar_model, num_candi
 
         while len(candidate_samples) < num_candidates and attempts < num_candidates * 10:
             attempts += 1
-            # 使用 dx/dy/dz 的变量范围生成状态
+            #  dx/dy/dz 
             state = random_state()
             dx, dy, dz = state
 
@@ -419,7 +419,7 @@ class GroupExperienceReplay:
         self.capacity = capacity
         self.buffer = deque(maxlen=self.capacity)
         self.priorities = deque(maxlen=self.capacity)
-        self.sampled_indices = set()  # 记录已抽取的索引
+        self.sampled_indices = set()  # 
 
     def append(self, experience):
         self.buffer.append(experience)
@@ -441,17 +441,17 @@ class GroupExperienceReplay:
         return len(self.buffer)
 
     def get_high_reward_samples(self, target_path, num_samples=20):
-        """获取高奖励样本（不重复抽取，返回原始值）"""
+        """(, )"""
         if len(self.buffer) == 0:
             return []
 
         samples_with_recalculated_scores = []
         for idx, experience in enumerate(self.buffer):
-            # 跳过已抽取的样本
+            # 
             if idx in self.sampled_indices:
                 continue
 
-            # 从归一化状态反归一化
+            # 
             normalized_state_tensor = experience[0]
             normalized_state = normalized_state_tensor.cpu().numpy().flatten()
             state_tuple = tuple(normalizer.denormalize(normalized_state))
@@ -462,26 +462,26 @@ class GroupExperienceReplay:
             sim = jaccard_similarity(triggered, target_path)
             samples_with_recalculated_scores.append((idx, state_tuple, new_reward, sim, triggered))
 
-        # 按奖励排序
+        # 
         samples_with_recalculated_scores.sort(key=lambda x: x[2], reverse=True)
 
-        # 取前num_samples个
+        # num_samples
         selected = samples_with_recalculated_scores[:num_samples]
 
-        # 记录已抽取的索引
+        # 
         for item in selected:
             self.sampled_indices.add(item[0])
 
-        # 返回格式：(state_tuple, reward, sim, triggered)
+        # : (state_tuple, reward, sim, triggered)
         return [(s[1], s[2], s[3], s[4]) for s in selected]
 
     def reset_sampled_indices(self):
-        """重置已抽取索引记录"""
+        """"""
         self.sampled_indices.clear()
 
 
 def load_path_data(file_path):
-    """加载路径数据（原始值）"""
+    """Path ()"""
     path_data = []
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -525,8 +525,8 @@ class DQNAgentWithPER:
         self.target_model.load_state_dict(self.model.state_dict())
 
     def decode_action(self, action_idx):
-        """动作解码（适配新变量范围）"""
-        delta_values = [1, -1]  # 调整为较小的步长，适应新的变量范围
+        """()"""
+        delta_values = [1, -1]  # , 
         dim = action_idx // 2
         delta_idx = action_idx % 2
         delta = delta_values[delta_idx]
@@ -538,7 +538,7 @@ class DQNAgentWithPER:
             return (0, 0, delta)
 
     def act(self, normalized_state):
-        """选择动作（输入为归一化状态）"""
+        """()"""
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
         state = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(device)
@@ -547,7 +547,7 @@ class DQNAgentWithPER:
         return torch.argmax(q_values, dim=1).item()
 
     def store_transition(self, normalized_state, action, reward, normalized_next_state, done):
-        """存储经验（输入为归一化状态）"""
+        """()"""
         state = torch.tensor(normalized_state, dtype=torch.float32).unsqueeze(0).to(device)
         next_state = torch.tensor(normalized_next_state, dtype=torch.float32).unsqueeze(0).to(device)
 
@@ -602,33 +602,33 @@ class DQNAgentWithPER:
 
 def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group_name="", pretrained_model=None,
                 sample_group_type=None):
-    """训练函数（使用归一化）- 调整为3分钟版本规模"""
-    # sample_group_type 只控制读取的样本文件后缀：similar / isolated。
-    # 这样可以把显示名称改为“随机组1/随机组2”，但不破坏原来的样本文件命名逻辑。
+    """()- 3 minutes"""
+    # sample_group_type : similar / isolated.
+    # "Random group1/Random group2", .
     if sample_group_type is None:
-        sample_group_type = 'similar' if group_name == '相似组' else 'isolated'
+        sample_group_type = 'similar' if group_name == '' else 'isolated'
     state_dim = 3
-    action_dim = 6  # 调整为2*3 (2个delta值 * 3个维度)
+    action_dim = 6  # 2*3 (2delta * 3)
 
     agent = DQNAgentWithPER(state_dim, action_dim, replay_buffer)
 
     if pretrained_model is not None:
-        print(f"  {group_name}：加载预训练模型权重（迁移学习）...")
+        print(f"  {group_name}: ()...")
         agent.model.load_state_dict(pretrained_model.state_dict())
         agent.target_model.load_state_dict(pretrained_model.state_dict())
-        print(f"  {group_name}：模型权重迁移完成！")
+        print(f"  {group_name}: completed")
 
     path_rewards = {}
 
-    print(f"开始训练{group_name}，包含路径: {[idx + 1 for idx in group_paths]}")
+    print(f"Start training{group_name}, Included Paths: {[idx + 1 for idx in group_paths]}")
     start_time = time.time()
 
-    # === 调整为3分钟版本规模 ===
-    BATCH_SIZE = 50  # 批次大小
-    N_SAMPLES = 200  # 样本数量
-    N_STEPS = 3  # 步数
-    N_ROUNDS = 5  # 重复轮次
-    N_BATCHES = 4  # 批次数量
+    # === 3 minutes ===
+    BATCH_SIZE = 50  # 
+    N_SAMPLES = 200  # 
+    N_STEPS = 3  # 
+    N_ROUNDS = 5  # 
+    N_BATCHES = 4  # 
 
     replay_count = 0
 
@@ -636,48 +636,48 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
         file_path = os.path.join(path_documents,
                                  f"path{path_idx + 1}_{sample_group_type}.txt")
         if not os.path.exists(file_path):
-            print(f"    警告：路径{path_idx + 1}文件不存在，跳过")
+            print(f"    : Path {path_idx + 1}, ")
             continue
 
-        path_data = load_path_data(file_path)  # 原始值
+        path_data = load_path_data(file_path)  # 
         target_path = target_paths[path_idx]
 
         if path_idx not in path_rewards:
             path_rewards[path_idx] = 0
 
-        print(f"\n  开始训练路径 {path_idx + 1}，将进行 {N_ROUNDS} 轮完整训练")
+        print(f"\n  Start training path  {path_idx + 1},  {N_ROUNDS} ")
 
         for round_idx in range(N_ROUNDS):
-            print(f"    路径 {path_idx + 1} - 第 {round_idx + 1}/{N_ROUNDS} 轮训练")
+            print(f"    Path  {path_idx + 1} - Run  {round_idx + 1}/{N_ROUNDS} ")
 
             for batch_idx in range(N_BATCHES):
                 batch_start = batch_idx * BATCH_SIZE
                 batch_end = min(batch_start + BATCH_SIZE, N_SAMPLES)
 
-                # 如果样本不足，跳过该批次
+                # , 
                 if batch_start >= len(path_data):
-                    print(f"      批次 {batch_idx + 1}: 样本不足，跳过")
+                    print(f"       {batch_idx + 1}: , ")
                     break
 
-                print(f"      批次 {batch_idx + 1}/{N_BATCHES} (样本 {batch_start}-{batch_end})")
+                print(f"       {batch_idx + 1}/{N_BATCHES} ( {batch_start}-{batch_end})")
 
                 for sample_idx in range(batch_start, batch_end):
                     if sample_idx >= len(path_data):
                         break
 
-                    state = path_data[sample_idx]  # 原始值
+                    state = path_data[sample_idx]  # 
                     prev_state = None
                     prev_triggered = None
 
                     for step in range(N_STEPS):
-                        # 归一化状态用于模型
+                        # 
                         normalized_state = normalizer.normalize(state)
 
-                        # 获取合法动作
+                        # 
                         legal_actions = []
                         for a in range(agent.action_dim):
                             dw, dt, dz = agent.decode_action(a)
-                            # 使用新的变量范围进行限制
+                            # 
                             cand_next = tuple(np.clip(np.array(state) + np.array([dw, dt, dz]),
                                                       STATE_MIN, STATE_MAX))
                             legal_actions.append(a)
@@ -685,7 +685,7 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
                         if not legal_actions:
                             break
 
-                        # 选择动作
+                        # 
                         if random.random() < agent.epsilon:
                             action = random.choice(legal_actions)
                         else:
@@ -694,31 +694,31 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
                                 q_values = agent.model(state_tensor)[0]
                             action = legal_actions[torch.argmax(q_values[legal_actions]).item()]
 
-                        # 执行动作（原始空间）
+                        # ()
                         dw, dt, dz = agent.decode_action(action)
                         next_state = tuple(np.clip(np.array(state) + np.array([dw, dt, dz]),
                                                    STATE_MIN, STATE_MAX))
 
-                        # 归一化下一状态
+                        # 
                         normalized_next_state = normalizer.normalize(next_state)
 
-                        # 计算奖励（使用原始值）
+                        # ()
                         dx, dy, dz = next_state
                         triggered = execute_Tr(dx, dy, dz)
                         reward = compute_reward(next_state, target_path, triggered,
                                                 prev_triggered, prev_state)
                         done = (step == N_STEPS - 1)
 
-                        # 存储经验（归一化状态）
+                        # ()
                         agent.store_transition(normalized_state, action, reward, normalized_next_state, done)
 
-                        # 更新状态
+                        # 
                         prev_state = state
                         prev_triggered = triggered
                         state = next_state
                         path_rewards[path_idx] += reward
 
-                # 回放训练
+                # 
                 if len(agent.replay_buffer) >= batch_size:
                     agent.train(batch_size)
                     replay_count += 1
@@ -726,69 +726,69 @@ def train_group(group_paths, path_documents, replay_buffer, batch_size=32, group
                     if replay_count % 2 == 0:
                         agent.update_target_model()
 
-            print(f"      路径 {path_idx + 1} - 第 {round_idx + 1} 轮完成")
+            print(f"      Path  {path_idx + 1} - Run  {round_idx + 1} completed")
 
-        print(f"  路径 {path_idx + 1} 的 {N_ROUNDS} 轮训练全部完成 ✅")
+        print(f"  Path  {path_idx + 1}  {N_ROUNDS} All completed ")
 
     training_time = time.time() - start_time
-    print(f"\n{group_name}训练完成!")
-    print(f"  训练方式: 每条路径独立完成{N_ROUNDS}轮训练（归一化）✅")
-    print(f"  总步数: {replay_count}次回放训练")
-    print(f"  用时: {training_time:.2f}秒")
-    print(f"  经验池大小: {len(replay_buffer)}")
+    print(f"\n{group_name}completed!")
+    print(f"  : Path completed{N_ROUNDS}()")
+    print(f"  : {replay_count}")
+    print(f"  : {training_time:.2f} seconds")
+    print(f"  : {len(replay_buffer)}")
 
     return agent, path_rewards, training_time
 
 
 def generate_and_train_grouped_paths_staged(path_documents, random_group1, random_group2, batch_size=32, run_id=1):
-    """分阶段训练（归一化版本）- 随机分组 + 模型复用"""
-    print(f"\n=== 运行 {run_id}/20 分阶段训练开始（3分钟版本规模，随机分组+模型复用） ===")
+    """()- random grouping + model reuse"""
+    print(f"\n===  {run_id}/20 (3 minutes, random grouping+model reuse) ===")
     random_group1_paths = [idx + 1 for idx in random_group1]
     random_group2_paths = [idx + 1 for idx in random_group2]
 
-    print(f"随机组1路径（先训练组）: {random_group1_paths}")
-    print(f"随机组2路径（模型复用组）: {random_group2_paths}")
+    print(f"Random group1Path (pretrained group): {random_group1_paths}")
+    print(f"Random group2Path (model-reuse group): {random_group2_paths}")
 
     total_start_time = time.time()
 
-    print(f"\n[阶段1] 为随机组1生成样本...")
-    # 样本生成规模保持不变；文件后缀仍保存为 similar，便于复用原读取逻辑。
+    print(f"\n[1] Random group1...")
+    # Sample generation;  similar, .
     generate_samples_for_similar_paths(random_group1, num_candidates=2000, top_k=200, run_id=run_id)
 
-    print(f"\n[阶段2] 训练随机组1（归一化，{5}轮完整训练）...")
+    print(f"\n[2] Random group1(, {5})...")
     group1_replay_buffer = GroupExperienceReplay(capacity=20000)
     group1_agent, group1_path_rewards, group1_training_time = train_group(
         random_group1, path_documents, group1_replay_buffer, batch_size,
-        group_name="随机组1（先训练组）", pretrained_model=None, sample_group_type="similar"
+        group_name="Random group1(pretrained group)", pretrained_model=None, sample_group_type="similar"
     )
 
-    print(f"\n[阶段3] 使用随机组1模型为随机组2生成样本...")
-    # 模型复用点1：随机组2样本评分中的 QValueScore 使用随机组1训练后的模型。
+    print(f"\n[3] Random group1Random group2...")
+    # model reuse1: Random group2 QValueScore Random group1.
     generate_samples_for_isolated_paths(random_group2, group1_agent.model,
                                         num_candidates=2000, top_k=200, run_id=run_id)
 
-    print(f"\n[阶段4] 训练随机组2（继承随机组1模型，{5}轮完整训练）...")
+    print(f"\n[4] Random group2(Random group1, {5})...")
     group2_replay_buffer = GroupExperienceReplay(capacity=20000)
-    # 模型复用点2：随机组2训练前加载随机组1模型权重，相当于迁移学习。
+    # model reuse2: Random group2Random group1, .
     group2_agent, group2_path_rewards, group2_training_time = train_group(
         random_group2, path_documents, group2_replay_buffer, batch_size,
-        group_name="随机组2（模型复用组）", pretrained_model=group1_agent.model, sample_group_type="isolated"
+        group_name="Random group2(model-reuse group)", pretrained_model=group1_agent.model, sample_group_type="isolated"
     )
 
     total_path_rewards = {**group1_path_rewards, **group2_path_rewards}
     total_cumulative_reward = sum(total_path_rewards.values())
     total_training_time = time.time() - total_start_time
 
-    print(f"\n=== 运行 {run_id}/20 完成，总用时: {total_training_time:.2f}秒 ===")
-    print(f"随机组1训练用时: {group1_training_time:.2f}秒")
-    print(f"随机组2训练用时: {group2_training_time:.2f}秒")
-    print(f"经验池统计 - 随机组1: {len(group1_replay_buffer)}, 随机组2: {len(group2_replay_buffer)}")
+    print(f"\n===  {run_id}/20 completed, : {total_training_time:.2f} seconds ===")
+    print(f"Random group1: {group1_training_time:.2f} seconds")
+    print(f"Random group2: {group2_training_time:.2f} seconds")
+    print(f" - Random group1: {len(group1_replay_buffer)}, Random group2: {len(group2_replay_buffer)}")
 
     return group1_agent, group2_agent, group1_replay_buffer, group2_replay_buffer, \
         total_cumulative_reward, total_path_rewards, total_training_time
 
 def create_consolidated_excel_report(all_runs_data, similar_group, isolated_group, output_dir):
-    """创建Excel报告（保持原有功能）"""
+    """Excel()"""
     os.makedirs(output_dir, exist_ok=True)
 
     similar_group_paths = [idx + 1 for idx in similar_group]
@@ -809,10 +809,10 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     stats_color = "FFF2CC"
 
     ws_paths = wb.active
-    ws_paths.title = "各路径详细表现"
+    ws_paths.title = "Path "
 
-    path_headers = ['路径编号', '分组类型'] + [f'第{i}次' for i in range(1, 21)] + ['平均相似度', '最高相似度',
-                                                                                    '最低相似度', '标准差']
+    path_headers = ['Path ID', ''] + [f'Run {i}' for i in range(1, 21)] + ['Average Similarity', 'Maximum Similarity',
+                                                                                    'Minimum Similarity', 'Standard deviation']
     for col, header in enumerate(path_headers, 1):
         cell = ws_paths.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, size=11, color="FFFFFF")
@@ -826,16 +826,16 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
         row = path_id + 1
 
         if path_id in similar_group_paths:
-            group_type = "随机组1（先训练组）"
+            group_type = "Random group1(pretrained group)"
             row_color = similar_group_color
         elif path_id in isolated_group_paths:
-            group_type = "随机组2（模型复用组）"
+            group_type = "Random group2(model-reuse group)"
             row_color = isolated_group_color
         else:
-            group_type = "未分组"
+            group_type = "Ungrouped"
             row_color = "FFFFFF"
 
-        cell = ws_paths.cell(row=row, column=1, value=f"路径{path_id}")
+        cell = ws_paths.cell(row=row, column=1, value=f"Path {path_id}")
         cell.font = Font(bold=True, size=10)
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = PatternFill(start_color=row_color, end_color=row_color, fill_type="solid")
@@ -878,11 +878,11 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     for col in range(23, 27):
         ws_paths.column_dimensions[get_column_letter(col)].width = 13
 
-    # === 工作表2: 分组统计 ===
-    ws_groups = wb.create_sheet("分组统计")
+    # === 2:  ===
+    ws_groups = wb.create_sheet("")
 
-    # 设置标题（删除了"筛选标准"列）
-    group_headers = ['分组名称', '包含路径'] + [f'第{i}次' for i in range(1, 21)] + ['平均相似度', '标准差']
+    # ("screening")
+    group_headers = ['Group Name', 'Included Paths'] + [f'Run {i}' for i in range(1, 21)] + ['Average Similarity', 'Standard deviation']
     for col, header in enumerate(group_headers, 1):
         cell = ws_groups.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, size=11, color="FFFFFF")
@@ -894,8 +894,8 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
 
     row = 2
 
-    # 相似路径组
-    cell = ws_groups.cell(row=row, column=1, value="随机组1（先训练组）")
+    # Similar path group
+    cell = ws_groups.cell(row=row, column=1, value="Random group1(pretrained group)")
     cell.font = Font(bold=True, size=11)
     cell.alignment = Alignment(horizontal="center", vertical="center")
     cell.fill = PatternFill(start_color=similar_group_color, end_color=similar_group_color, fill_type="solid")
@@ -917,7 +917,7 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = thin_border
 
-    # 统计列
+    # 
     cell = ws_groups.cell(row=row, column=23, value=round(np.mean(group_similarities), 4))
     cell.number_format = '0.0000'
     cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -934,9 +934,9 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
 
     row += 1
 
-    # 孤岛路径组
+    # Isolated path group
     if isolated_group_paths:
-        cell = ws_groups.cell(row=row, column=1, value="随机组2（模型复用组）")
+        cell = ws_groups.cell(row=row, column=1, value="Random group2(model-reuse group)")
         cell.font = Font(bold=True, size=11)
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = PatternFill(start_color=isolated_group_color, end_color=isolated_group_color, fill_type="solid")
@@ -958,7 +958,7 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = thin_border
 
-        # 统计列
+        # 
         cell = ws_groups.cell(row=row, column=23, value=round(np.mean(isolated_similarities), 4))
         cell.number_format = '0.0000'
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -973,7 +973,7 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
         cell.font = Font(bold=True, size=11)
         cell.border = thin_border
 
-    # 调整列宽
+    # 
     ws_groups.column_dimensions['A'].width = 16
     ws_groups.column_dimensions['B'].width = 22
     for col in range(3, 23):
@@ -981,11 +981,11 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     ws_groups.column_dimensions[get_column_letter(23)].width = 14
     ws_groups.column_dimensions[get_column_letter(24)].width = 12
 
-    # === 工作表3: 详细样本数据 ===
-    ws_samples = wb.create_sheet("详细样本数据")
+    # === 3: Detailed Sample Data ===
+    ws_samples = wb.create_sheet("Detailed Sample Data")
 
-    # 样本数据标题（删除了"分组类型"列）
-    sample_headers = ['运行次数', '路径编号', '样本序号', 'Dx', 'Dy', 'Dz', '相似度', '触发规则集合']
+    # ("")
+    sample_headers = ['Run', 'Path ID', 'Sample ID', 'Dx', 'Dy', 'Dz', 'Similarity', 'Triggered Rule Set']
     for col, header in enumerate(sample_headers, 1):
         cell = ws_samples.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, size=11, color="FFFFFF")
@@ -996,12 +996,12 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
     ws_samples.row_dimensions[1].height = 30
 
     sample_row = 2
-    # 输出每次运行每条路径的所有样本数据
+    #  runPath 
     for run_idx, run_data in enumerate(all_runs_data, 1):
         for path_id in range(1, len(target_paths) + 1):
             samples = run_data['path_samples'].get(path_id, [])
 
-            # 确定路径背景色
+            # Path 
             if path_id in similar_group_paths:
                 path_color = similar_group_color
             elif path_id in isolated_group_paths:
@@ -1013,65 +1013,65 @@ def create_consolidated_excel_report(all_runs_data, similar_group, isolated_grou
                 dx, dy, dz = state_tuple
                 triggered_str = ','.join(map(str, sorted(triggered)))
 
-                # 运行次数
-                cell = ws_samples.cell(row=sample_row, column=1, value=f"第{run_idx}次")
+                # Run
+                cell = ws_samples.cell(row=sample_row, column=1, value=f"Run {run_idx}")
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.fill = PatternFill(start_color=path_color, end_color=path_color, fill_type="solid")
                 cell.border = thin_border
 
-                # 路径编号
-                cell = ws_samples.cell(row=sample_row, column=2, value=f"路径{path_id}")
+                # Path ID
+                cell = ws_samples.cell(row=sample_row, column=2, value=f"Path {path_id}")
                 cell.font = Font(bold=True)
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.fill = PatternFill(start_color=path_color, end_color=path_color, fill_type="solid")
                 cell.border = thin_border
 
-                # 样本序号
+                # Sample ID
                 cell = ws_samples.cell(row=sample_row, column=3, value=sample_idx)
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = thin_border
 
-                # Dx, Dy, Dz值
+                # Dx, Dy, Dz
                 for col_offset, value in enumerate([dx, dy, dz]):
                     cell = ws_samples.cell(row=sample_row, column=4 + col_offset, value=value)
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                     cell.border = thin_border
 
-                # 相似度
+                # Similarity
                 cell = ws_samples.cell(row=sample_row, column=7, value=round(sim, 4))
                 cell.number_format = '0.0000'
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = thin_border
 
-                # 触发规则集合
+                # Triggered Rule Set
                 cell = ws_samples.cell(row=sample_row, column=8, value=f"{{{triggered_str}}}")
                 cell.alignment = Alignment(horizontal="left", vertical="center")
                 cell.border = thin_border
 
                 sample_row += 1
 
-    # 调整列宽
+    # 
     sample_widths = [13, 13, 11, 10, 12, 8, 12, 45]
     for i, width in enumerate(sample_widths, 1):
         ws_samples.column_dimensions[get_column_letter(i)].width = width
 
-    # 保存文件
-    output_path = os.path.join(output_dir, "20次运行综合报告_随机分组_模型复用_3分钟版本.xlsx")
+    # 
+    output_path = os.path.join(output_dir, "20 run_random grouping_model reuse_3 minutes.xlsx")
     wb.save(output_path)
-    print(f"\n✅ 综合Excel报告已生成: {output_path}")
+    print(f"\n Consolidated Excel report generated: {output_path}")
 
 
 def run_20_times_training():
-    """运行20次训练（调整为3分钟版本规模）- 优化保存方案"""
-    model_path_base = r"D:\实验\CNN\DQNNEW\saved_models_random_reuse_3min_version"
-    path_documents = r"D:\实验\CNN\DQNNEW\path_samples_grouped"
-    output_dir = r"D:\实验\CNN\对比实验二\excel_reports_random_reuse_3min_version"
+    """20(3 minutes)- """
+    model_path_base = r"D:\Experiment\CNN\DQNNEW\saved_models_random_reuse_3min_version"
+    path_documents = r"D:\Experiment\CNN\DQNNEW\path_samples_grouped"
+    output_dir = r"D:\Experiment\CNN\ComparisonExperiment2\excel_reports_random_reuse_3min_version"
 
     os.makedirs(model_path_base, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
 
-    # 随机分组：只分两个组。
-    # 默认第一组数量与原相似度分组方法得到的第一组数量一致；也可以开启键盘输入。
+    # random grouping: .
+    # Run SimilarityRun ; .
     similar_group, isolated_group, default_group1_size, default_group2_size = group_paths_randomly(
         target_paths,
         use_keyboard_input=USE_KEYBOARD_INPUT_GROUP_SIZE,
@@ -1082,23 +1082,23 @@ def run_20_times_training():
     isolated_group_display = [idx + 1 for idx in isolated_group]
 
     print("=" * 60)
-    print("开始20次连续训练实验 - 随机分组 + 模型复用 - 3分钟版本规模")
+    print("20 - random grouping + model reuse - 3 minutes")
     print("=" * 60)
-    print("训练规模配置:")
-    print("  ✅ 每路径: 5轮重复训练")
-    print("  ✅ 每轮: 4个批次")
-    print("  ✅ 每批次: 50个样本")
-    print("  ✅ 每样本: 3步探索")
-    print("  ✅ 样本生成: 2000候选 → 200最终")
-    print("  ✅ 模型保存: 只保存模型参数（优化版本）")
-    print("  ✅ 分组方式: 随机分成两个组")
-    print(f"  ✅ 默认组规模: 随机组1={default_group1_size}条路径，随机组2={default_group2_size}条路径")
-    print(f"  ✅ 键盘输入组规模: {'开启' if USE_KEYBOARD_INPUT_GROUP_SIZE else '关闭'}")
-    print(f"  ✅ 随机种子: {RANDOM_GROUP_SEED if RANDOM_GROUP_SEED is not None else 'None，每次运行随机不同'}")
+    print("Training-scale configuration:")
+    print("   Per path: 5")
+    print("   Per round: 4")
+    print("   Per batch: 50")
+    print("   Per sample: 3")
+    print("   Sample generation: 2000candidates -> 200final samples")
+    print("   : save model parameters only(optimized version)")
+    print("   : ")
+    print(f"   Default group size: Random group1={default_group1_size}Path , Random group2={default_group2_size}Path ")
+    print(f"   Keyboard-input group size: {'' if USE_KEYBOARD_INPUT_GROUP_SIZE else ''}")
+    print(f"   Random seed: {RANDOM_GROUP_SEED if RANDOM_GROUP_SEED is not None else 'None,  run'}")
     print("=" * 60)
-    print(f"\n自动分组结果:")
-    print(f"相似路径组: {similar_group_display}")
-    print(f"孤岛路径组: {isolated_group_display}")
+    print(f"\nAutomatic grouping results:")
+    print(f"Similar path group: {similar_group_display}")
+    print(f"Isolated path group: {isolated_group_display}")
     print("\n" + "=" * 60)
 
     all_runs_data = []
@@ -1106,24 +1106,24 @@ def run_20_times_training():
 
     for run_id in range(1, 21):
         print(f"\n{'=' * 60}")
-        print(f"开始第 {run_id}/20 次运行")
+        print(f"Start run  {run_id}/20  run")
         print(f"{'=' * 60}")
 
         group1_agent, group2_agent, group1_buffer, group2_buffer, total_cumulative_reward, path_rewards, training_time = \
             generate_and_train_grouped_paths_staged(path_documents, similar_group, isolated_group, batch_size=32,
                                                     run_id=run_id)
 
-        # === 优化保存：只保存模型参数，不保存优化器状态等 ===
+        # === : save model parameters only,  ===
         group1_model_path = os.path.join(model_path_base, f"random_group1_model_run_{run_id}.pth")
         group2_model_path = os.path.join(model_path_base, f"random_group2_model_run_{run_id}.pth")
 
-        # 只保存模型状态字典，大幅减少文件大小和保存时间
+        # , 
         torch.save(group1_agent.model.state_dict(), group1_model_path)
         torch.save(group2_agent.model.state_dict(), group2_model_path)
 
-        print(f"[第{run_id}次] 模型已保存（优化版本 - 只保存参数）")
+        print(f"[Run {run_id}] Model saved(optimized version - )")
 
-        # 重置已抽取索引
+        # 
         group1_buffer.reset_sampled_indices()
         group2_buffer.reset_sampled_indices()
 
@@ -1180,30 +1180,30 @@ def run_20_times_training():
 
         all_runs_data.append(run_data)
 
-        print(f"[第{run_id}次] 完成! 总体平均相似度: {run_data['overall_avg_similarity']:.4f}")
+        print(f"[Run {run_id}] completed! Overall Average Similarity: {run_data['overall_avg_similarity']:.4f}")
         print(f"{'=' * 60}\n")
 
     total_time = time.time() - total_start_time
 
-    print("\n正在生成综合Excel报告...")
+    print("\nGenerating consolidated Excel report...")
     create_consolidated_excel_report(all_runs_data, similar_group, isolated_group, output_dir)
 
     print("\n" + "=" * 60)
-    print("20次训练全部完成! - 随机分组 + 模型复用 - 3分钟版本规模")
+    print("20All completed! - random grouping + model reuse - 3 minutes")
     print("=" * 60)
-    print(f"训练规模总结:")
-    print(f"  每路径: 5轮 × 4批次 × 50样本 × 3步 = 3000步/路径")
-    print(f"  样本生成: 2000候选 → 200最终")
-    print(f"  模型保存: 只保存模型参数（优化版本）")
-    print(f"  总耗时: {total_time:.2f}秒 ({total_time / 60:.2f}分钟)")
-    print(f"  平均每次耗时: {total_time / 20:.2f}秒")
-    print(f"\n平均相似度统计:")
+    print(f":")
+    print(f"  Per path: 5 x 4 x 50 x 3 = 3000/Path ")
+    print(f"  Sample generation: 2000candidates -> 200final samples")
+    print(f"  : save model parameters only(optimized version)")
+    print(f"  Total elapsed time: {total_time:.2f} seconds ({total_time / 60:.2f} minutes)")
+    print(f"  Average elapsed time per run: {total_time / 20:.2f} seconds")
+    print(f"\nAverage similarity statistics:")
     avg_similarities = [r['overall_avg_similarity'] for r in all_runs_data]
-    print(f"  总体平均: {np.mean(avg_similarities):.4f}")
-    print(f"  最高: {np.max(avg_similarities):.4f}")
-    print(f"  最低: {np.min(avg_similarities):.4f}")
-    print(f"  标准差: {np.std(avg_similarities):.4f}")
-    print(f"\n所有结果已保存到: {output_dir}")
+    print(f"  Overall average: {np.mean(avg_similarities):.4f}")
+    print(f"  Maximum: {np.max(avg_similarities):.4f}")
+    print(f"  Minimum: {np.min(avg_similarities):.4f}")
+    print(f"  Standard deviation: {np.std(avg_similarities):.4f}")
+    print(f"\nAll results have been saved to: {output_dir}")
     print("=" * 60)
 
 

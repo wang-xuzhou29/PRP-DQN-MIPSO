@@ -15,16 +15,16 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 # ========================================
-# ========== 实验配置参数 ==========
+# ========== experiment configuration parameters ==========
 # ========================================
 NUM_RUNS = 20
 
-# === 设备设置 ===
+# === device setup ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-# === 三维范围设置 ===
-# 保持第二个代码当前的DQN状态范围。若需要改成0-500，只需修改这里。
+# === three-dimensional range settings ===
+# Keep the current DQN state range used by the second script. To use a 0-500 range, modify this section only.
 LIGHT_MIN = 1
 LIGHT_MAX = 50
 MOISTURE_MIN = 1
@@ -38,7 +38,7 @@ BOUNDS = {
     "temp": (TEMP_MIN, TEMP_MAX),
 }
 
-# === 普通PSO参数 ===
+# === standard PSO parameters ===
 PSO_W = 0.7
 PSO_C1 = 1.5
 PSO_C2 = 1.5
@@ -46,7 +46,7 @@ PSO_VMAX_RATIO = 0.2
 
 
 def normalize_state(state):
-    """将状态归一化到[0,1]范围。"""
+    """Normalize the state to the [0, 1] range."""
     return np.array([
         (state[0] - BOUNDS["light"][0]) / (BOUNDS["light"][1] - BOUNDS["light"][0]),
         (state[1] - BOUNDS["moisture"][0]) / (BOUNDS["moisture"][1] - BOUNDS["moisture"][0]),
@@ -55,7 +55,7 @@ def normalize_state(state):
 
 
 def denormalize_state(normalized_state):
-    """将归一化状态还原到原始范围。"""
+    """Restore the normalized state to the original range."""
     return np.array([
         normalized_state[0] * (BOUNDS["light"][1] - BOUNDS["light"][0]) + BOUNDS["light"][0],
         normalized_state[1] * (BOUNDS["moisture"][1] - BOUNDS["moisture"][0]) + BOUNDS["moisture"][0],
@@ -64,7 +64,7 @@ def denormalize_state(normalized_state):
 
 
 def generate_random_state():
-    """生成符合各维度范围的随机状态。"""
+    """Generate a random state within each dimension range."""
     light = np.random.randint(BOUNDS["light"][0], BOUNDS["light"][1] + 1)
     moisture = np.random.randint(BOUNDS["moisture"][0], BOUNDS["moisture"][1] + 1)
     temp = np.random.randint(BOUNDS["temp"][0], BOUNDS["temp"][1] + 1)
@@ -72,7 +72,7 @@ def generate_random_state():
 
 
 def clip_state(state):
-    """将状态限制在各维度边界内。"""
+    """Clip the state to each dimension boundary."""
     return np.array([
         np.clip(state[0], BOUNDS["light"][0], BOUNDS["light"][1]),
         np.clip(state[1], BOUNDS["moisture"][0], BOUNDS["moisture"][1]),
@@ -81,7 +81,7 @@ def clip_state(state):
 
 
 def is_state_valid(state):
-    """检查状态是否在所有维度有效范围内。"""
+    """Check whether the state is within all valid dimension ranges."""
     return (
         BOUNDS["light"][0] <= state[0] <= BOUNDS["light"][1]
         and BOUNDS["moisture"][0] <= state[1] <= BOUNDS["moisture"][1]
@@ -91,8 +91,8 @@ def is_state_valid(state):
 
 def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     """
-    执行TR路径触发函数。
-    可接受 execute_Tr(state) 或 execute_Tr(dx, dy, dz) 两种调用形式。
+    Execute the TR path-trigger function.
+    Accepts execute_Tr(state) or execute_Tr(dx, dy, dz).
     """
     if dy is None and dz is None:
         state = np.asarray(state_or_dx, dtype=float)
@@ -100,7 +100,7 @@ def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     else:
         dx, dy, dz = float(state_or_dx), float(dy), float(dz)
 
-    # --- 1. 常量与配置 ---
+    # --- 1. constants and configuration ---
     MAX_GRID_SIZE = 500.0
     INITIAL_BATTERY = 1000.0
     BATTERY_PER_STEP = 1.0
@@ -122,7 +122,7 @@ def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     current_z = random.uniform(0.0, MAX_GRID_SIZE)
     simulated_y = current_y
 
-    # --- 分支 1-4 ---
+    # --- branch 1-4 ---
     if abs(dx) < MIN_PLANNING_X != abs(dy) < MIN_PLANNING_X:
         triggered.add(1)
     if abs(dx) < MIN_PLANNING_X != abs(dz) < MIN_PLANNING_X:
@@ -132,7 +132,7 @@ def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     if abs(dx) < MIN_PLANNING_X != abs(dx) < MIN_PLANNING_Z:
         triggered.add(4)
 
-    # --- 分支 5-9 ---
+    # --- branch 5-9 ---
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dx) > MIN_PLANNING_Z * 2:
         triggered.add(5)
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dy) > MIN_PLANNING_Z * 2:
@@ -144,7 +144,7 @@ def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     if abs(dz) > MIN_PLANNING_Z * 2 != abs(dz) > MIN_PLANNING_Z:
         triggered.add(9)
 
-    # --- 分支 10-15 ---
+    # --- branch 10-15 ---
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 10:
         triggered.add(10)
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dy < 30:
@@ -158,7 +158,7 @@ def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     if TARGET_Y > simulated_y and dy < 20 != TARGET_Y > simulated_y and dz < 20:
         triggered.add(15)
 
-    # --- 分支 16-21 ---
+    # --- branch 16-21 ---
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dx) > CRITICAL_X_VELOCITY * 1.5:
         triggered.add(16)
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dz) > CRITICAL_X_VELOCITY * 1.5:
@@ -172,7 +172,7 @@ def execute_Tr(state_or_dx, dy=None, dz=None) -> Set[int]:
     if abs(dy) > CRITICAL_X_VELOCITY * 1.5 != abs(dy) > CRITICAL_Y_VELOCITY * 1.5:
         triggered.add(21)
 
-    # --- 分支 22-29 ---
+    # --- branch 22-29 ---
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_X < current_z and dz > CRITICAL_Z_VELOCITY:
         triggered.add(22)
     if TARGET_Z < current_z and dz > CRITICAL_Z_VELOCITY != TARGET_Y < current_z and dz > CRITICAL_Z_VELOCITY:
@@ -201,7 +201,7 @@ target_paths = [
 
 
 def jaccard_similarity(set1: Set[int], set2: Set[int]) -> float:
-    """若set1覆盖目标set2，则认为匹配度为1。"""
+    """If set1 covers target set2, the match score is treated as 1."""
     if set2.issubset(set1):
         return 1.0
     intersection = len(set1 & set2)
@@ -210,7 +210,7 @@ def jaccard_similarity(set1: Set[int], set2: Set[int]) -> float:
 
 
 def compute_reward(state, target_path, triggered):
-    """计算DQN奖励。"""
+    """Compute the DQN reward."""
     sim = jaccard_similarity(triggered, target_path)
     reward = sim * 10
     if target_path.issubset(triggered):
@@ -261,7 +261,7 @@ class SimpleDQNAgent:
         self.replay_buffer = SimpleReplayBuffer(capacity=5000)
 
     def decode_action(self, action_idx):
-        """解码动作。"""
+        """Decode the action."""
         light_deltas = [int((LIGHT_MAX - LIGHT_MIN) * p) for p in [0.05, 0.1, 0.2, 0.5, 0.7, -0.05, -0.1, -0.2, -0.5, -0.7]]
         moisture_deltas = [int((MOISTURE_MAX - MOISTURE_MIN) * p) for p in [0.05, 0.1, 0.2, 0.5, 0.7, -0.05, -0.1, -0.2, -0.5, -0.7]]
         temp_deltas = [int((TEMP_MAX - TEMP_MIN) * p) for p in [0.05, 0.1, 0.2, 0.5, 0.7, -0.05, -0.1, -0.2, -0.5, -0.7]]
@@ -305,7 +305,7 @@ class SimpleDQNAgent:
         self.target_model.load_state_dict(self.model.state_dict())
 
     def get_best_samples(self, target_path, num_samples=20):
-        """从经验池中筛选DQN候选样本。该阶段单独计入T_sample_screening。"""
+        """Screen DQN candidate samples from the replay buffer. This stage is counted separately in T_sample_screening."""
         if len(self.replay_buffer) == 0:
             return []
 
@@ -322,8 +322,8 @@ class SimpleDQNAgent:
 
 
 def train_dqn_for_path(path_idx, target_path, num_samples=200):
-    """为单条路径训练普通DQN。"""
-    print(f"  开始训练路径{path_idx + 1}的DQN模型...")
+    """Train a standard DQN for a single path."""
+    print(f"  Start training path {path_idx + 1} DQN model...")
     agent = SimpleDQNAgent(state_dim=3, action_dim=30)
 
     random_states = [normalize_state(generate_random_state()) for _ in range(num_samples)]
@@ -377,7 +377,7 @@ def train_dqn_for_path(path_idx, target_path, num_samples=200):
                 if step_count % 100 == 0:
                     agent.update_target_model()
 
-    print(f"  路径{path_idx + 1}训练完成，经验池大小: {len(agent.replay_buffer)}")
+    print(f"  Path {path_idx + 1} training completed, replay buffer size: {len(agent.replay_buffer)}")
     return agent
 
 
@@ -405,8 +405,8 @@ class Particle:
 
 class BasicPSO:
     """
-    普通PSO：只包含标准速度/位置更新。
-    已删除变异系数、反向粒子和局部最优重置等改进PSO机制。
+    Standard PSO: contains only standard velocity and position updates.
+    Mutation coefficients, opposite particles, local-best reset, and other improved PSO mechanisms have been removed.
     """
 
     def __init__(self, target_path, swarm_size=20, dqn_samples=None):
@@ -497,7 +497,7 @@ def _write_row(ws, row_idx, row_data, border, alignment, fill=None):
 
 
 def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, filename=None):
-    """只导出时间指标和每条路径迭代次数。"""
+    """Export only timing metrics and per-path iteration counts."""
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"DQN_BasicPSO_Time_Metrics_{timestamp}.xlsx"
@@ -508,7 +508,7 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
 
     wb = Workbook()
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(name="微软雅黑", size=11, bold=True, color="FFFFFF")
+    header_font = Font(name="Microsoft YaHei", size=11, bold=True, color="FFFFFF")
     alternate_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
     border = Border(
         left=Side(style="thin", color="000000"),
@@ -521,13 +521,13 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
     num_runs = len(all_run_results)
     num_paths = len(target_paths)
 
-    # 工作表1：运行时间汇总
+    # Worksheet 1: runtime summary
     ws1 = wb.active
-    ws1.title = "运行时间汇总"
+    ws1.title = "Runtime Summary"
     ws1.sheet_view.showGridLines = False
     headers1 = [
-        "运行次数", "路径数量", "DQN训练总时间(s)", "样本筛选总时间(s)", "DQN直接检查总时间(s)",
-        "PSO初始化总时间(s)", "PSO搜索总时间(s)", "算法总时间(s)", "总迭代次数", "路径平均迭代次数"
+        "Run", "Number of Paths", "DQNTraining Total Time(s)", "Sample Screening Total Time(s)", "DQNDirect Check Total Time(s)",
+        "PSOInitialization Total Time(s)", "PSOSearch Total Time(s)", "Total Algorithm Time(s)", "Total Iterations", "Average Iterations per Path"
     ]
     widths1 = [12, 10, 18, 18, 22, 18, 18, 16, 14, 18]
     _set_header(ws1, headers1, widths1, header_fill, header_font, border, center_align)
@@ -542,7 +542,7 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
         total_iterations = sum(p["iterations"] for p in path_results)
 
         row_data = [
-            f"运行 {run_idx}",
+            f" {run_idx}",
             num_paths,
             round(total_dqn_train, 6),
             round(total_screen, 6),
@@ -558,12 +558,12 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
     ws1.freeze_panes = "A2"
     ws1.auto_filter.ref = f"A1:J{num_runs + 1}"
 
-    # 工作表2：路径时间与迭代明细
-    ws2 = wb.create_sheet(title="路径时间与迭代明细")
+    # Worksheet 2: path timing and iteration details
+    ws2 = wb.create_sheet(title="Path Timing and Iteration Details")
     ws2.sheet_view.showGridLines = False
     headers2 = [
-        "运行次数", "路径编号", "DQN训练时间(s)", "样本筛选时间(s)", "DQN直接检查时间(s)",
-        "PSO初始化时间(s)", "PSO搜索时间(s)", "路径算法总时间(s)", "迭代次数"
+        "Run", "Path ID", "DQN training(s)", "Sample Screening Time(s)", "DQNDirect Check Time(s)",
+        "PSOInitialization Time(s)", "PSOSearch Time(s)", "Path Total Algorithm Time(s)", "Iterations"
     ]
     widths2 = [12, 12, 18, 18, 22, 18, 18, 18, 12]
     _set_header(ws2, headers2, widths2, header_fill, header_font, border, center_align)
@@ -572,8 +572,8 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
     for run_idx, run_result in enumerate(all_run_results, 1):
         for path_result in run_result["paths"]:
             row_data = [
-                f"运行 {run_idx}",
-                f"路径 {path_result['path_idx'] + 1}",
+                f" {run_idx}",
+                f"Path  {path_result['path_idx'] + 1}",
                 round(path_result["T_DQN_train"], 6),
                 round(path_result["T_sample_screening"], 6),
                 round(path_result["T_direct_check"], 6),
@@ -588,12 +588,12 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
     ws2.freeze_panes = "A2"
     ws2.auto_filter.ref = f"A1:I{row_idx - 1}"
 
-    # 工作表3：路径聚合统计
-    ws3 = wb.create_sheet(title="路径聚合统计")
+    # Worksheet 3: path aggregate statistics
+    ws3 = wb.create_sheet(title="Path Aggregate Statistics")
     ws3.sheet_view.showGridLines = False
     headers3 = [
-        "路径编号", "平均DQN训练时间(s)", "平均样本筛选时间(s)", "平均PSO初始化时间(s)",
-        "平均PSO搜索时间(s)", "平均路径算法总时间(s)", "平均迭代次数", "最小迭代次数", "最大迭代次数"
+        "Path ID", "Average DQN Training Time(s)", "Average Sample Screening Time(s)", "Average PSO Initialization Time(s)",
+        "Average PSO Search Time(s)", "Average Path Total Algorithm Time(s)", "Average Iterations", "Minimum Iterations", "Maximum Iterations"
     ]
     widths3 = [12, 22, 22, 22, 22, 22, 16, 14, 14]
     _set_header(ws3, headers3, widths3, header_fill, header_font, border, center_align)
@@ -602,7 +602,7 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
         records = [run_result["paths"][path_idx] for run_result in all_run_results]
         iterations = [r["iterations"] for r in records]
         row_data = [
-            f"路径 {path_idx + 1}",
+            f"Path  {path_idx + 1}",
             round(float(np.mean([r["T_DQN_train"] for r in records])), 6),
             round(float(np.mean([r["T_sample_screening"] for r in records])), 6),
             round(float(np.mean([r["T_PSO_init"] for r in records])), 6),
@@ -617,61 +617,61 @@ def export_time_metrics_to_excel(all_run_results, experiment_total_time=None, fi
     ws3.freeze_panes = "A2"
     ws3.auto_filter.ref = f"A1:I{num_paths + 1}"
 
-    # 工作表4：实验总览
-    ws4 = wb.create_sheet(title="实验总览")
+    # Worksheet 4: experiment overview
+    ws4 = wb.create_sheet(title="Experiment Overview")
     ws4.sheet_view.showGridLines = False
-    headers4 = ["指标", "数值"]
+    headers4 = ["Metric", "Value"]
     widths4 = [32, 24]
     _set_header(ws4, headers4, widths4, header_fill, header_font, border, center_align)
 
     all_path_records = [p for run_result in all_run_results for p in run_result["paths"]]
     all_iterations = [p["iterations"] for p in all_path_records]
     overview_rows = [
-        ["实验运行次数", num_runs],
-        ["目标路径数量", num_paths],
-        ["实验总墙钟时间(s)", round(experiment_total_time, 6) if experiment_total_time is not None else ""],
-        ["平均单次算法总时间(s)", round(float(np.mean([r["T_run_algorithm_total"] for r in all_run_results])), 6)],
-        ["平均单路径算法总时间(s)", round(float(np.mean([p["T_path_algorithm_total"] for p in all_path_records])), 6)],
-        ["平均DQN训练时间/路径(s)", round(float(np.mean([p["T_DQN_train"] for p in all_path_records])), 6)],
-        ["平均样本筛选时间/路径(s)", round(float(np.mean([p["T_sample_screening"] for p in all_path_records])), 6)],
-        ["平均PSO搜索时间/路径(s)", round(float(np.mean([p["T_PSO_search"] for p in all_path_records])), 6)],
-        ["平均单路径迭代次数", round(float(np.mean(all_iterations)), 2)],
-        ["最大单路径迭代次数", int(np.max(all_iterations))],
-        ["最小单路径迭代次数", int(np.min(all_iterations))],
+        ["Experiment Runs", num_runs],
+        ["Number of Target Paths", num_paths],
+        ["Total Experiment Wall-clock Time(s)", round(experiment_total_time, 6) if experiment_total_time is not None else ""],
+        ["Average Total Algorithm Time per Run(s)", round(float(np.mean([r["T_run_algorithm_total"] for r in all_run_results])), 6)],
+        ["Average Total Algorithm Time per Path(s)", round(float(np.mean([p["T_path_algorithm_total"] for p in all_path_records])), 6)],
+        ["Average DQN Training Time per Path(s)", round(float(np.mean([p["T_DQN_train"] for p in all_path_records])), 6)],
+        ["Average Sample Screening Time per Path(s)", round(float(np.mean([p["T_sample_screening"] for p in all_path_records])), 6)],
+        ["Average PSO Search Time per Path(s)", round(float(np.mean([p["T_PSO_search"] for p in all_path_records])), 6)],
+        ["Average Iterations per Path", round(float(np.mean(all_iterations)), 2)],
+        ["Maximum Iterations per Path", int(np.max(all_iterations))],
+        ["Minimum Iterations per Path", int(np.min(all_iterations))],
     ]
 
     for idx, row_data in enumerate(overview_rows, 2):
         _write_row(ws4, idx, row_data, border, center_align, alternate_fill if idx % 2 == 0 else None)
 
     wb.save(filepath)
-    print(f"\n✓ 时间指标已导出到: {filepath}")
+    print(f"\n Timing metrics exported to: {filepath}")
     return filepath
 
 
 def run_single_experiment(run_num, max_iterations=3000):
-    """运行单次 DQN + 普通PSO 实验。"""
+    """Run one DQN + standard PSO ."""
     print(f"\n{'=' * 80}")
-    print(f"开始第 {run_num} 次运行：DQN + 普通PSO 时间统计")
+    print(f"Start run  {run_num}  run: DQN + standard PSO ")
     print(f"{'=' * 80}")
 
     run_start = time.perf_counter()
     path_results = []
 
     for path_idx, target_path in enumerate(target_paths):
-        print(f"\n第{run_num}次运行 - 路径{path_idx + 1}")
+        print(f"\nRun {run_num} run - Path {path_idx + 1}")
         path_total_start = time.perf_counter()
 
-        # 1) DQN训练时间
+        # 1) DQN training
         dqn_train_start = time.perf_counter()
         agent = train_dqn_for_path(path_idx, target_path, num_samples=200)
         T_DQN_train = time.perf_counter() - dqn_train_start
 
-        # 2) DQN样本筛选时间
+        # 2) DQNSample Screening Time
         screening_start = time.perf_counter()
         dqn_samples = agent.get_best_samples(target_path, num_samples=20)
         T_sample_screening = time.perf_counter() - screening_start
 
-        # 3) DQN直接命中检查时间
+        # 3) DQN
         direct_check_start = time.perf_counter()
         direct_solution_found = False
         for state_tuple, reward, sim, triggered in dqn_samples:
@@ -686,16 +686,16 @@ def run_single_experiment(run_num, max_iterations=3000):
 
         if direct_solution_found:
             print(
-                f"  路径{path_idx + 1}: DQN样本直接覆盖目标 | "
-                f"DQN训练 {T_DQN_train:.6f}s | 筛选 {T_sample_screening:.6f}s | 迭代 {iterations_used}次"
+                f"  Path {path_idx + 1}: DQN | "
+                f"DQN training {T_DQN_train:.6f}s | screening {T_sample_screening:.6f}s | iterations {iterations_used}"
             )
         else:
-            # 4) 普通PSO初始化时间
+            # 4) standard PSOInitialization Time
             pso_init_start = time.perf_counter()
             pso = BasicPSO(target_path, swarm_size=20, dqn_samples=dqn_samples)
             T_PSO_init = time.perf_counter() - pso_init_start
 
-            # 5) 普通PSO搜索时间
+            # 5) standard PSOSearch Time
             pso_search_start = time.perf_counter()
             iterations_used = max_iterations
             for iteration in range(max_iterations):
@@ -706,10 +706,10 @@ def run_single_experiment(run_num, max_iterations=3000):
             T_PSO_search = time.perf_counter() - pso_search_start
 
             print(
-                f"  路径{path_idx + 1}: "
-                f"DQN训练 {T_DQN_train:.6f}s | 筛选 {T_sample_screening:.6f}s | "
-                f"PSO初始化 {T_PSO_init:.6f}s | PSO搜索 {T_PSO_search:.6f}s | "
-                f"迭代 {iterations_used}次"
+                f"  Path {path_idx + 1}: "
+                f"DQN training {T_DQN_train:.6f}s | screening {T_sample_screening:.6f}s | "
+                f"PSO {T_PSO_init:.6f}s | PSO {T_PSO_search:.6f}s | "
+                f"iterations {iterations_used}"
             )
 
         T_path_algorithm_total = time.perf_counter() - path_total_start
@@ -726,7 +726,7 @@ def run_single_experiment(run_num, max_iterations=3000):
         })
 
     T_run_algorithm_total = time.perf_counter() - run_start
-    print(f"\n第{run_num}次运行完成 | 算法总时间 {T_run_algorithm_total:.6f}s")
+    print(f"\nRun {run_num} runcompleted | Total Algorithm Time {T_run_algorithm_total:.6f}s")
     return {
         "run_num": run_num,
         "paths": path_results,
@@ -736,10 +736,10 @@ def run_single_experiment(run_num, max_iterations=3000):
 
 def run_multiple_experiments(num_runs):
     print("\n" + "=" * 80)
-    print(f"DQN + 普通PSO算法 - {num_runs}次独立运行：时间指标统计")
+    print(f"DQN + standard PSO - {num_runs}: Metric")
     print("=" * 80)
-    print(f"目标路径数量: {len(target_paths)}")
-    print("统计指标: DQN训练时间、样本筛选时间、PSO初始化时间、PSO搜索时间、路径迭代次数")
+    print(f"Number of Target Paths: {len(target_paths)}")
+    print("Statistics: DQN training, Sample Screening Time, PSOInitialization Time, PSOSearch Time, Path Iterations")
     print("=" * 80)
 
     all_run_results = []
@@ -751,27 +751,27 @@ def run_multiple_experiments(num_runs):
 
     experiment_total_time = time.perf_counter() - experiment_start
     print(f"\n{'=' * 80}")
-    print(f"全部{num_runs}次运行完成 | 实验总墙钟时间 {experiment_total_time:.6f}s")
+    print(f"All {num_runs} runcompleted | Total Experiment Wall-clock Time {experiment_total_time:.6f}s")
     print(f"{'=' * 80}\n")
     return all_run_results, experiment_total_time
 
 
 if __name__ == "__main__":
     print("=" * 80)
-    print("DQN + 普通PSO算法 - 仅统计时间指标与路径迭代次数")
+    print("DQN + standard PSO - MetricPath Iterations")
     print("=" * 80)
-    print(f"当前配置: 运行次数 = {NUM_RUNS}")
-    print(f"路径数量: {len(target_paths)}")
-    print(f"设备: {device}")
+    print(f"Current configuration: Run = {NUM_RUNS}")
+    print(f"Number of Paths: {len(target_paths)}")
+    print(f"Device: {device}")
     print("=" * 80)
 
     if len(sys.argv) > 1:
         try:
             NUM_RUNS = int(sys.argv[1])
-            print(f"从命令行读取: 运行次数 = {NUM_RUNS}")
+            print(f"Read from command line: Run = {NUM_RUNS}")
         except ValueError:
-            print(f"命令行参数无效，使用默认运行次数 {NUM_RUNS}")
+            print(f"Invalid command-line argument, using default number of runs {NUM_RUNS}")
 
     all_results, total_time = run_multiple_experiments(num_runs=NUM_RUNS)
     export_time_metrics_to_excel(all_results, total_time)
-    print("\n程序执行完成！")
+    print("\nProgram completed")

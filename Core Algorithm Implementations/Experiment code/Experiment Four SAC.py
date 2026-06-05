@@ -14,15 +14,15 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from datetime import datetime
 import os
 
-# 设备设置
+# device setup
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# === 统一实验配置 ===
+# ===  ===
 EXPERIMENT_CONFIG = {
     'STATE_DIM': 3,
     'ACTION_DIM': 3,
-    # 更新为新的变量取值范围: [co2, moisture, temp]
+    # : [co2, moisture, temp]
     'MIN_VALUES': np.array([800, 10, 1], dtype=np.float32),
     'MAX_VALUES': np.array([1500, 80, 40], dtype=np.float32),
     'SAMPLES_PER_PATH': 200,
@@ -100,23 +100,23 @@ EXPERIMENT_CONFIG = {
 }
 
 
-# === 工具函数 ===
+# ===  ===
 def clip_state(state):
-    """根据新的变量范围裁剪状态"""
+    """"""
     min_vals = EXPERIMENT_CONFIG['MIN_VALUES']
     max_vals = EXPERIMENT_CONFIG['MAX_VALUES']
     return np.clip(state, min_vals, max_vals)
 
 
 def normalize_state(state):
-    """将状态归一化到[-1, 1]范围"""
+    """[-1, 1]"""
     min_vals = EXPERIMENT_CONFIG['MIN_VALUES']
     max_vals = EXPERIMENT_CONFIG['MAX_VALUES']
     return 2 * (state - min_vals) / (max_vals - min_vals) - 1
 
 
 def denormalize_state(normalized_state):
-    """将归一化状态转换回原始范围"""
+    """"""
     min_vals = EXPERIMENT_CONFIG['MIN_VALUES']
     max_vals = EXPERIMENT_CONFIG['MAX_VALUES']
     return (normalized_state + 1) * (max_vals - min_vals) / 2 + min_vals
@@ -145,14 +145,14 @@ def unified_reward_function(triggered, target_path):
 
 
 def safe_divide(a, b):
-    """安全除法，避免除零错误"""
+    """, """
     return a / b if b != 0 else 0
 
 
 def section6_low_co2_extremes(moisture, co2, temp):
-    """检测低CO2极端条件下的分支触发情况"""
+    """CO2branch"""
     triggered = set()
-    b = [0] * 137  # 初始化分支触发数组
+    b = [0] * 137  # branch
 
     if (co2 < 1150) != (co2 < 1000):
         b[0] = 1
@@ -164,7 +164,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[2] = 3
         triggered.add(3)
 
-    # 分支4-11: 调整到中间值区域
+    # branch4-11: 
     if (co2 < 1150 and moisture > 45 and temp > 20) != (co2 < 1050 and moisture > 45 and temp > 20):
         b[3] = 4
         triggered.add(4)
@@ -190,7 +190,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[10] = 11
         triggered.add(11)
 
-    # 分支12-21: 调整到中间值
+    # branch12-21: 
     if ((co2 < 1150 and moisture > 50) or (co2 < 1100 and temp < 22)) != (
             (co2 < 970 and moisture > 50) or (co2 < 1100 and temp < 22)):
         b[11] = 12
@@ -232,7 +232,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[20] = 21
         triggered.add(21)
 
-    # 分支22-25: 调整阈值到中间
+    # branch22-25: 
     if (safe_divide(moisture, co2 - 700) > 0.06 and temp < 22) != (safe_divide(moisture, co2 - 700) > 0.04 and temp < 22):
         b[21] = 22
         triggered.add(22)
@@ -246,7 +246,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[24] = 25
         triggered.add(25)
 
-    # 分支26-36: 调整到中间值
+    # branch26-36: 
     if (co2 < 1150 and moisture > 45 and temp > 20) != (co2 < 1000 and moisture > 45 and temp > 20):
         b[25] = 26
         triggered.add(26)
@@ -281,7 +281,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[35] = 36
         triggered.add(36)
 
-    # 分支37-44: 调整到中间值
+    # branch37-44: 
     if (co2 < 1150 and moisture < 40 and temp < 22) != (co2 < 970 and moisture < 40 and temp < 22):
         b[36] = 37
         triggered.add(37)
@@ -307,7 +307,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[43] = 44
         triggered.add(44)
 
-    # 分支45-55: 扩大范围
+    # branch45-55: 
     if (co2 < 1150 and 35 < moisture < 60 and 15 < temp < 28) != (
             co2 < 1050 and 35 < moisture < 60 and 15 < temp < 28):
         b[44] = 45
@@ -353,7 +353,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[54] = 55
         triggered.add(55)
 
-    # 分支56-65: 调整到中间值和扩大范围
+    # branch56-65: 
     if (co2 < 1150 and moisture < 40 and 15 < temp < 25) != (co2 < 1020 and moisture < 40 and 15 < temp < 25):
         b[55] = 56
         triggered.add(56)
@@ -385,7 +385,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[64] = 65
         triggered.add(65)
 
-    # 分支66-74: 调整比例和温度阈值
+    # branch66-74: temperature
     if (safe_divide(moisture, co2 - 700) > 0.06 and temp > 20) != (safe_divide(moisture, co2 - 850) > 0.06 and temp > 20):
         b[65] = 66
         triggered.add(66)
@@ -447,7 +447,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[82] = 83
         triggered.add(83)
 
-    # 分支84-87: 简化条件到中间值
+    # branch84-87: 
     if (co2 < 1150 and moisture < 40) != (co2 < 1000 and moisture < 40):
         b[83] = 84
         triggered.add(84)
@@ -461,7 +461,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[86] = 87
         triggered.add(87)
 
-    # 分支88-92: 调整到中间范围
+    # branch88-92: 
     if (co2 < 1150 and 12 < temp < 25 and moisture > 45) != (co2 < 1030 and 12 < temp < 25 and moisture > 45):
         b[87] = 88
         triggered.add(88)
@@ -478,7 +478,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[91] = 92
         triggered.add(92)
 
-    # 分支93-96: 调整到中间值
+    # branch93-96: 
     if (moisture > 45 and temp > 20) != (moisture > 35 and temp > 20):
         b[92] = 93
         triggered.add(93)
@@ -492,7 +492,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[95] = 96
         triggered.add(96)
 
-    # 分支97-102: 扩大范围
+    # branch97-102: 
     if (1000 < co2 < 1200 and 35 < moisture < 55 and 15 < temp < 25) != (
             950 < co2 < 1250 and 35 < moisture < 55 and 15 < temp < 25):
         b[96] = 97
@@ -518,7 +518,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[101] = 102
         triggered.add(102)
 
-    # 分支103-109: 调整条件和扩大范围
+    # branch103-109: 
     if (co2 < 1150 and 30 < moisture < 55 and (temp < 20 or temp > 22)) != (
             co2 < 1050 and 30 < moisture < 55 and (temp < 20 or temp > 22)):
         b[102] = 103
@@ -548,7 +548,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[108] = 109
         triggered.add(109)
 
-    # 分支110-114: 调整到中间值
+    # branch110-114: 
     if (moisture < 45 and co2 < 1150 and temp < 22) != (moisture < 38 and co2 < 1150 and temp < 22):
         b[109] = 110
         triggered.add(110)
@@ -565,7 +565,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[113] = 114
         triggered.add(114)
 
-    # 分支115-118: 调整条件
+    # branch115-118: 
     if (co2 < 1200 and moisture > 45 and temp > 20 and co2 < 1150) != (
             co2 < 1200 and moisture > 35 and temp > 20 and co2 < 1150):
         b[114] = 115
@@ -583,7 +583,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[117] = 118
         triggered.add(118)
 
-    # 分支119-124: 调整到中间值和扩大范围
+    # branch119-124: 
     if (co2 < 1150 and (moisture > 50 or moisture < 40) and (temp > 22 or temp < 18)) != (
             co2 < 1000 and (moisture > 50 or moisture < 40) and (temp > 22 or temp < 18)):
         b[118] = 119
@@ -609,7 +609,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[123] = 124
         triggered.add(124)
 
-    # 分支125-131: 调整比例和阈值
+    # branch125-131: 
     if (co2 < 1150 and safe_divide(temp, moisture + 1) > 0.5 and moisture < 45) != (
             co2 < 1050 and safe_divide(temp, moisture + 1) > 0.5 and moisture < 45):
         b[124] = 125
@@ -639,7 +639,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
         b[130] = 131
         triggered.add(131)
 
-    # 分支132-137: 调整范围到中间
+    # branch132-137: 
     if (co2 < 1150 and 35 <= moisture <= 50 and 15 <= temp <= 25) != (
             co2 < 1000 and 35 <= moisture <= 50 and 15 <= temp <= 25):
         b[131] = 132
@@ -668,7 +668,7 @@ def section6_low_co2_extremes(moisture, co2, temp):
     return triggered
 
 
-# === SAC Actor网络 ===
+# === SAC Actor ===
 class GaussianPolicy(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=256):
         super(GaussianPolicy, self).__init__()
@@ -709,7 +709,7 @@ class GaussianPolicy(nn.Module):
         return action, log_prob, mean
 
 
-# === SAC Critic网络 ===
+# === SAC Critic ===
 class QNetwork(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=256):
         super(QNetwork, self).__init__()
@@ -736,7 +736,7 @@ class QNetwork(nn.Module):
         return q1, q2
 
 
-# === 经验回放池 ===
+# ===  ===
 class EnhancedReplayBuffer:
     def __init__(self, capacity=50000):
         self.buffer = deque(maxlen=capacity)
@@ -785,7 +785,7 @@ class EnhancedReplayBuffer:
                 original_state = denormalize_state(normalized_state)
                 original_state_int = np.round(original_state).astype(int)
 
-                # 修正：正确传递三个参数
+                # : 
                 co2, moisture, temp = original_state_int
                 triggered = section6_low_co2_extremes(moisture, co2, temp)
 
@@ -801,13 +801,13 @@ class EnhancedReplayBuffer:
         return len(self.buffer)
 
 
-# === SAC智能体 ===
+# === SAC ===
 class SACAgent:
     def __init__(self, state_dim=3, action_dim=3):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        # 修正：使用正确的配置键名
+        # : 
         self.policy = GaussianPolicy(state_dim, action_dim, EXPERIMENT_CONFIG['HIDDEN_DIM']).to(device)
         self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=EXPERIMENT_CONFIG['ACTOR_LR'])
 
@@ -892,19 +892,19 @@ class SACAgent:
 
         if self.replay_train_count % 2 == 0:
             alpha_value = self.log_alpha.exp().item()
-            print(f"  -> 训练更新 (第{self.replay_train_count}次), Alpha={alpha_value:.4f}")
+            print(f"  ->  (Run {self.replay_train_count}), Alpha={alpha_value:.4f}")
 
 
-# === 核心性能指标统计函数 ===
+# === Metric ===
 def calculate_run_performance(run_idx, sac_results, training_time, total_steps, update_count, agent):
-    """计算单次运行的全面性能指标"""
+    """ runMetric"""
     target_paths = EXPERIMENT_CONFIG['TARGET_PATHS']
     num_paths = len(target_paths)
 
-    # 样本相似度统计
+    # Similarity
     all_similarities = []
 
-    # 计算指标
+    # Metric
     total_samples = 0
     all_rewards = []
     total_reward = 0
@@ -922,78 +922,78 @@ def calculate_run_performance(run_idx, sac_results, training_time, total_steps, 
             all_similarities.append(similarity)
             total_samples += 1
 
-    # 1. 总奖励
+    # 1. 
     total_reward = total_reward
 
-    # 2. 平均奖励
+    # 2. 
     if total_samples > 0:
         average_reward = total_reward / total_samples
     else:
         average_reward = 0
 
-    # 5. 收敛性（平均相似度）
+    # 5. (Average Similarity)
     if all_similarities:
         convergence = np.mean(all_similarities)
     else:
         convergence = 0
 
-    # 12. 环境适应性（相似度方差）
+    # 12. (Similarity)
     if len(all_similarities) > 1:
         environment_adaptability = 1 / (np.std(all_similarities) + 1e-8)
     else:
         environment_adaptability = 0
 
-    # 13. 策略的泛化能力（平均相似度）
+    # 13. (Average Similarity)
     generalization_ability = convergence
 
-    # 15. 计算效率（步数/秒）
+    # 15. (/ seconds)
     if training_time > 0:
         computational_efficiency = total_steps / training_time
     else:
         computational_efficiency = 0
 
-    # 16. 策略更新频率
+    # 16. 
     if training_time > 0:
         policy_update_frequency = update_count / training_time
     else:
         policy_update_frequency = 0
 
-    # 样本相似度统计
+    # Similarity
     avg_similarity = np.mean(all_similarities) if all_similarities else 0
     max_similarity = np.max(all_similarities) if all_similarities else 0
     min_similarity = np.min(all_similarities) if all_similarities else 0
 
     return {
-        '运行编号': run_idx + 1,
+        '': run_idx + 1,
 
-        # 保留的核心指标
-        '总奖励': round(total_reward, 2),
-        '平均奖励': round(average_reward, 4),
-        '收敛性': round(convergence, 4),
-        '环境适应性': round(environment_adaptability, 4),
-        '泛化能力': round(generalization_ability, 4),
-        '计算效率': round(computational_efficiency, 2),
-        '策略更新频率': round(policy_update_frequency, 4),
+        # Metric
+        '': round(total_reward, 2),
+        '': round(average_reward, 4),
+        '': round(convergence, 4),
+        '': round(environment_adaptability, 4),
+        '': round(generalization_ability, 4),
+        '': round(computational_efficiency, 2),
+        '': round(policy_update_frequency, 4),
 
-        # 样本相似度统计
-        '平均相似度': round(avg_similarity, 4),
-        '最大相似度': round(max_similarity, 4),
-        '最小相似度': round(min_similarity, 4),
+        # Similarity
+        'Average Similarity': round(avg_similarity, 4),
+        'Similarity': round(max_similarity, 4),
+        'Similarity': round(min_similarity, 4),
     }
 
 
-# === Excel导出函数 ===
-def export_to_excel(all_sac_results, all_performance_data, target_paths, output_path="SAC测试结果_20次运行.xlsx"):
-    """导出20次运行的SAC结果到Excel"""
-    print("\n正在生成Excel报告...")
+# === Excel ===
+def export_to_excel(all_sac_results, all_performance_data, target_paths, output_path="SAC_20 run.xlsx"):
+    """20 runSACExcel"""
+    print("\nExcel...")
 
-    # 初始化数据列表
+    # 
     all_sac_summary_data = []
     all_sac_detailed_data = []
 
-    # 处理每次运行的数据
+    #  run
     for run_idx, (sac_results, performance_data) in enumerate(zip(all_sac_results, all_performance_data)):
-        # ===== Sheet1: SAC路径汇总统计 =====
+        # ===== Sheet1: SACPath  =====
         sac_summary_data = []
         for path_idx in range(len(target_paths)):
             target_path = target_paths[path_idx]
@@ -1001,39 +1001,39 @@ def export_to_excel(all_sac_results, all_performance_data, target_paths, output_
 
             if len(samples) == 0:
                 sac_summary_data.append({
-                    '运行编号': run_idx + 1,
-                    '路径编号': path_idx + 1,
-                    '目标规则数': len(target_path),
-                    '样本数量': 0,
-                    '平均相似度': 0,
-                    '最大相似度': 0,
-                    '最小相似度': 0,
-                    '相似度标准差': 0,
-                    '是否完美匹配': '否',
-                    '目标路径': ', '.join(map(str, sorted(target_path)))
+                    '': run_idx + 1,
+                    'Path ID': path_idx + 1,
+                    '': len(target_path),
+                    '': 0,
+                    'Average Similarity': 0,
+                    'Similarity': 0,
+                    'Similarity': 0,
+                    'SimilarityStandard deviation': 0,
+                    '': '',
+                    'target paths': ', '.join(map(str, sorted(target_path)))
                 })
                 continue
 
             similarities = [s['similarity'] for s in samples]
             perfect_count = sum(1 for s in similarities if abs(s - 1.0) < 0.001)
-            is_perfect = '是' if perfect_count > 0 else '否'
+            is_perfect = '' if perfect_count > 0 else ''
 
             sac_summary_data.append({
-                '运行编号': run_idx + 1,
-                '路径编号': path_idx + 1,
-                '目标规则数': len(target_path),
-                '样本数量': len(samples),
-                '平均相似度': round(np.mean(similarities), 4),
-                '最大相似度': round(max(similarities), 4),
-                '最小相似度': round(min(similarities), 4),
-                '相似度标准差': round(np.std(similarities), 4),
-                '是否完美匹配': is_perfect,
-                '目标路径': ', '.join(map(str, sorted(target_path)))
+                '': run_idx + 1,
+                'Path ID': path_idx + 1,
+                '': len(target_path),
+                '': len(samples),
+                'Average Similarity': round(np.mean(similarities), 4),
+                'Similarity': round(max(similarities), 4),
+                'Similarity': round(min(similarities), 4),
+                'SimilarityStandard deviation': round(np.std(similarities), 4),
+                '': is_perfect,
+                'target paths': ', '.join(map(str, sorted(target_path)))
             })
 
         all_sac_summary_data.extend(sac_summary_data)
 
-        # ===== Sheet2: SAC详细样本数据 =====
+        # ===== Sheet2: SACDetailed Sample Data =====
         sac_detailed_data = []
         for path_idx in range(len(target_paths)):
             target_path = target_paths[path_idx]
@@ -1045,62 +1045,62 @@ def export_to_excel(all_sac_results, all_performance_data, target_paths, output_
                 triggered = sample['triggered']
 
                 sac_detailed_data.append({
-                    '运行编号': run_idx + 1,
-                    '路径编号': path_idx + 1,
-                    '样本序号': sample_idx + 1,
-                    'CO2值': int(state[0]),
-                    '湿度值': int(state[1]),
-                    '温度值': int(state[2]),
-                    '相似度': round(similarity, 4),
-                    '是否完美匹配': '是' if abs(similarity - 1.0) < 0.001 else '否',
-                    '目标路径': ', '.join(map(str, sorted(target_path))),
-                    '触发规则': ', '.join(map(str, sorted(triggered))),
-                    '匹配规则数': len(target_path.intersection(triggered)),
-                    '目标规则数': len(target_path)
+                    '': run_idx + 1,
+                    'Path ID': path_idx + 1,
+                    'Sample ID': sample_idx + 1,
+                    'CO2': int(state[0]),
+                    'moisture': int(state[1]),
+                    'temperature': int(state[2]),
+                    'Similarity': round(similarity, 4),
+                    '': '' if abs(similarity - 1.0) < 0.001 else '',
+                    'target paths': ', '.join(map(str, sorted(target_path))),
+                    '': ', '.join(map(str, sorted(triggered))),
+                    '': len(target_path.intersection(triggered)),
+                    '': len(target_path)
                 })
 
         all_sac_detailed_data.extend(sac_detailed_data)
 
-    # 创建Excel文件
+    # Excel
     sac_summary_df = pd.DataFrame(all_sac_summary_data)
     sac_detailed_df = pd.DataFrame(all_sac_detailed_data)
     performance_df = pd.DataFrame(all_performance_data)
 
     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-        # Sheet1: SAC路径汇总统计
-        sac_summary_df.to_excel(writer, sheet_name='SAC路径汇总统计', index=False)
+        # Sheet1: SACPath 
+        sac_summary_df.to_excel(writer, sheet_name='SACPath ', index=False)
 
-        # Sheet2: SAC详细样本数据
-        sac_detailed_df.to_excel(writer, sheet_name='SAC详细样本数据', index=False)
+        # Sheet2: SACDetailed Sample Data
+        sac_detailed_df.to_excel(writer, sheet_name='SACDetailed Sample Data', index=False)
 
-        # Sheet3: 全面性能指标统计 - 只保留指定列
+        # Sheet3: Metric - 
         selected_columns = [
-            '运行编号',
-            '总奖励', '平均奖励', '收敛性', '环境适应性',
-            '泛化能力', '计算效率', '策略更新频率',
-            '平均相似度', '最大相似度', '最小相似度'
+            '',
+            '', '', '', '',
+            '', '', '',
+            'Average Similarity', 'Similarity', 'Similarity'
         ]
         performance_df_selected = performance_df[selected_columns]
-        performance_df_selected.to_excel(writer, sheet_name='全面性能指标统计', index=False)
+        performance_df_selected.to_excel(writer, sheet_name='Metric', index=False)
 
-        # 美化样式
+        # 
         workbook = writer.book
 
-        # 通用样式
+        # 
         header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-        header_font = Font(name='微软雅黑', size=11, bold=True, color='FFFFFF')
-        perfect_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')  # 浅绿色
+        header_font = Font(name='Microsoft YaHei', size=11, bold=True, color='FFFFFF')
+        perfect_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')  # 
 
-        # === 设置Sheet1样式 ===
-        ws1 = writer.sheets['SAC路径汇总统计']
+        # === Sheet1 ===
+        ws1 = writer.sheets['SACPath ']
         for cell in ws1[1]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        # 高亮完美匹配行
+        # 
         for row_idx in range(2, ws1.max_row + 1):
-            if ws1.cell(row_idx, 9).value == '是':  # 第9列是"是否完美匹配"
+            if ws1.cell(row_idx, 9).value == '':  # Run 9""
                 for col_idx in range(1, ws1.max_column + 1):
                     ws1.cell(row_idx, col_idx).fill = perfect_fill
 
@@ -1115,8 +1115,8 @@ def export_to_excel(all_sac_results, all_performance_data, target_paths, output_
         ws1.column_dimensions['I'].width = 15
         ws1.column_dimensions['J'].width = 50
 
-        # === 设置Sheet2样式 ===
-        ws2 = writer.sheets['SAC详细样本数据']
+        # === Sheet2 ===
+        ws2 = writer.sheets['SACDetailed Sample Data']
         for cell in ws2[1]:
             cell.fill = header_fill
             cell.font = header_font
@@ -1135,29 +1135,29 @@ def export_to_excel(all_sac_results, all_performance_data, target_paths, output_
         ws2.column_dimensions['K'].width = 15
         ws2.column_dimensions['L'].width = 15
 
-        # === 设置Sheet3样式 ===
-        ws3 = writer.sheets['全面性能指标统计']
+        # === Sheet3 ===
+        ws3 = writer.sheets['Metric']
         for cell in ws3[1]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
 
-        # 设置列宽
+        # 
         columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
         for col in columns:
             ws3.column_dimensions[col].width = 18
 
-    print(f"Excel报告已保存到: {output_path}")
-    print(f"  - Sheet1: SAC路径汇总统计 ({len(all_sac_summary_data)}行)")
-    print(f"  - Sheet2: SAC详细样本数据 ({len(all_sac_detailed_data)}行)")
-    print(f"  - Sheet3: 全面性能指标统计 ({len(all_performance_data)}行)")
+    print(f"Excel: {output_path}")
+    print(f"  - Sheet1: SACPath  ({len(all_sac_summary_data)})")
+    print(f"  - Sheet2: SACDetailed Sample Data ({len(all_sac_detailed_data)})")
+    print(f"  - Sheet3: Metric ({len(all_performance_data)})")
 
 
-# === 训练流程 ===
+# ===  ===
 def train_sac_workflow():
     print("=" * 80)
-    print("开始SAC训练流程")
-    print("相似度计算方式: 交集 / 目标路径长度")
+    print("SAC")
+    print("Similarity:  / target paths")
     print("=" * 80)
 
     agent = SACAgent()
@@ -1167,7 +1167,7 @@ def train_sac_workflow():
     start_time = time.time()
     total_steps = 0
 
-    print(f"\n生成样本: 每条路径{EXPERIMENT_CONFIG['SAMPLES_PER_PATH']}个")
+    print(f"\n: Path {EXPERIMENT_CONFIG['SAMPLES_PER_PATH']}")
     path_samples = {}
     min_vals = EXPERIMENT_CONFIG['MIN_VALUES']
     max_vals = EXPERIMENT_CONFIG['MAX_VALUES']
@@ -1175,21 +1175,21 @@ def train_sac_workflow():
     for path_idx in range(num_paths):
         samples = []
         for _ in range(EXPERIMENT_CONFIG['SAMPLES_PER_PATH']):
-            # 根据新的变量范围生成随机样本
+            # 
             state = np.random.uniform(min_vals, max_vals).astype(np.float32)
             samples.append(state)
         path_samples[path_idx] = samples
-        print(f"  路径 {path_idx + 1}/{num_paths}: 生成 {len(samples)} 个样本")
+        print(f"  Path  {path_idx + 1}/{num_paths}:  {len(samples)} ")
 
     batch_size = EXPERIMENT_CONFIG['BATCH_SIZE_SAMPLES']
     num_batches = EXPERIMENT_CONFIG['SAMPLES_PER_PATH'] // batch_size
 
-    print(f"\n开始批次训练: 每批{batch_size}个样本,每个样本走{EXPERIMENT_CONFIG['STEPS_PER_SAMPLE']}步")
-    print(f"总批次数: {num_batches} 批/路径 × {num_paths} 路径 = {num_batches * num_paths} 批")
+    print(f"\n: {batch_size},{EXPERIMENT_CONFIG['STEPS_PER_SAMPLE']}")
+    print(f": {num_batches} /Path  x {num_paths} Path  = {num_batches * num_paths} ")
     print("-" * 80)
 
     for batch_idx in range(num_batches):
-        print(f"\n批次 {batch_idx + 1}/{num_batches}")
+        print(f"\n {batch_idx + 1}/{num_batches}")
 
         for path_idx in range(num_paths):
             target_path = target_paths[path_idx]
@@ -1209,7 +1209,7 @@ def train_sac_workflow():
                     next_state = state + action
                     next_state = clip_state(next_state)
 
-                    # 修正：正确传递三个参数
+                    # : 
                     co2, moisture, temp = next_state
                     triggered = section6_low_co2_extremes(moisture, co2, temp)
                     reward = unified_reward_function(triggered, target_path)
@@ -1232,115 +1232,115 @@ def train_sac_workflow():
 
             avg_reward = np.mean(batch_rewards)
             avg_similarity = np.mean(batch_similarities)
-            print(f"  路径{path_idx + 1}: 平均奖励={avg_reward:.2f}, 平均相似度={avg_similarity:.4f}")
+            print(f"  Path {path_idx + 1}: ={avg_reward:.2f}, Average Similarity={avg_similarity:.4f}")
 
-        print(f"\n  执行回放训练...")
+        print(f"\n  ...")
         agent.replay_train()
-        print(f"  回放池大小: {len(agent.replay_buffer)}")
+        print(f"  : {len(agent.replay_buffer)}")
 
     training_time = time.time() - start_time
 
     print("\n" + "=" * 80)
-    print(f"SAC训练完成! 总耗时: {training_time:.2f}秒, 总步数: {total_steps}")
-    print(f"回放池大小: {len(agent.replay_buffer)}")
-    print(f"总回放训练次数: {agent.replay_train_count}")
+    print(f"SACcompleted! Total elapsed time: {training_time:.2f} seconds, : {total_steps}")
+    print(f": {len(agent.replay_buffer)}")
+    print(f": {agent.replay_train_count}")
     print("=" * 80)
 
-    print(f"\n从经验池中为每条路径挑选相似度最高的{EXPERIMENT_CONFIG['TOP_K_SAMPLES']}个样本...")
+    print(f"\nPath SimilarityMaximum{EXPERIMENT_CONFIG['TOP_K_SAMPLES']}...")
     top_k_results = agent.replay_buffer.get_top_k_per_path(num_paths, EXPERIMENT_CONFIG['TOP_K_SAMPLES'])
 
     return agent, top_k_results, training_time, total_steps, agent.replay_train_count
 
 
-# === 主流程 ===
+# ===  ===
 def main():
     print("\n" + "=" * 80)
-    print("SAC算法测试 - 20次运行版本")
-    print("变量范围: CO2(800-1500), 湿度(10-80), 温度(1-40)")
-    print("全面性能指标评估")
+    print("SAC - 20 run")
+    print(": CO2(800-1500), moisture(10-80), temperature(1-40)")
+    print("Metric")
     print("=" * 80)
 
     all_sac_results = []
     all_performance_data = []
     target_paths = EXPERIMENT_CONFIG['TARGET_PATHS']
 
-    # 运行20次实验
+    # 20
     for run_idx in range(EXPERIMENT_CONFIG['NUM_RUNS']):
         print(f"\n{'=' * 80}")
-        print(f"开始第 {run_idx + 1}/{EXPERIMENT_CONFIG['NUM_RUNS']} 次运行")
+        print(f"Start run  {run_idx + 1}/{EXPERIMENT_CONFIG['NUM_RUNS']}  run")
         print(f"{'=' * 80}")
 
-        # SAC训练
+        # SAC
         sac_agent, sac_results, training_time, total_steps, update_count = train_sac_workflow()
 
-        # 计算性能指标
+        # Metric
         performance_data = calculate_run_performance(
             run_idx, sac_results, training_time, total_steps, update_count, sac_agent
         )
 
-        # 保存结果
+        # 
         all_sac_results.append(sac_results)
         all_performance_data.append(performance_data)
 
-        print(f"\n第 {run_idx + 1} 次运行完成!")
-        print(f"  总奖励: {performance_data['总奖励']}")
-        print(f"  平均奖励: {performance_data['平均奖励']}")
-        print(f"  收敛性: {performance_data['收敛性']}")
+        print(f"\nRun  {run_idx + 1}  runcompleted!")
+        print(f"  : {performance_data['']}")
+        print(f"  : {performance_data['']}")
+        print(f"  : {performance_data['']}")
 
-    # 导出Excel结果（整合20次运行数据）
+    # Excel(20 run)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f"SAC测试结果_20次运行_{timestamp}.xlsx"
+    output_path = f"SAC_20 run_{timestamp}.xlsx"
     export_to_excel(all_sac_results, all_performance_data, target_paths, output_path)
 
-    # 打印总体统计摘要
+    # 
     print("\n" + "=" * 80)
-    print("20次运行总体统计摘要")
+    print("20 run")
     print("=" * 80)
 
-    # 计算关键指标统计
-    total_rewards = [p['总奖励'] for p in all_performance_data]
-    average_rewards = [p['平均奖励'] for p in all_performance_data]
-    convergences = [p['收敛性'] for p in all_performance_data]
-    environment_adaptabilities = [p['环境适应性'] for p in all_performance_data]
-    generalization_abilities = [p['泛化能力'] for p in all_performance_data]
-    computational_efficiencies = [p['计算效率'] for p in all_performance_data]
-    policy_update_frequencies = [p['策略更新频率'] for p in all_performance_data]
-    avg_similarities = [p['平均相似度'] for p in all_performance_data]
+    # Metric
+    total_rewards = [p[''] for p in all_performance_data]
+    average_rewards = [p[''] for p in all_performance_data]
+    convergences = [p[''] for p in all_performance_data]
+    environment_adaptabilities = [p[''] for p in all_performance_data]
+    generalization_abilities = [p[''] for p in all_performance_data]
+    computational_efficiencies = [p[''] for p in all_performance_data]
+    policy_update_frequencies = [p[''] for p in all_performance_data]
+    avg_similarities = [p['Average Similarity'] for p in all_performance_data]
 
-    print(f"总奖励统计:")
-    print(f"  平均值: {np.mean(total_rewards):.2f}")
-    print(f"  标准差: {np.std(total_rewards):.2f}")
+    print(f":")
+    print(f"  : {np.mean(total_rewards):.2f}")
+    print(f"  Standard deviation: {np.std(total_rewards):.2f}")
 
-    print(f"\n平均奖励统计:")
-    print(f"  平均值: {np.mean(average_rewards):.4f}")
-    print(f"  标准差: {np.std(average_rewards):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(average_rewards):.4f}")
+    print(f"  Standard deviation: {np.std(average_rewards):.4f}")
 
-    print(f"\n收敛性统计:")
-    print(f"  平均值: {np.mean(convergences):.4f}")
-    print(f"  标准差: {np.std(convergences):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(convergences):.4f}")
+    print(f"  Standard deviation: {np.std(convergences):.4f}")
 
-    print(f"\n环境适应性统计:")
-    print(f"  平均值: {np.mean(environment_adaptabilities):.4f}")
-    print(f"  标准差: {np.std(environment_adaptabilities):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(environment_adaptabilities):.4f}")
+    print(f"  Standard deviation: {np.std(environment_adaptabilities):.4f}")
 
-    print(f"\n泛化能力统计:")
-    print(f"  平均值: {np.mean(generalization_abilities):.4f}")
-    print(f"  标准差: {np.std(generalization_abilities):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(generalization_abilities):.4f}")
+    print(f"  Standard deviation: {np.std(generalization_abilities):.4f}")
 
-    print(f"\n计算效率统计:")
-    print(f"  平均值: {np.mean(computational_efficiencies):.2f}")
-    print(f"  标准差: {np.std(computational_efficiencies):.2f}")
+    print(f"\n:")
+    print(f"  : {np.mean(computational_efficiencies):.2f}")
+    print(f"  Standard deviation: {np.std(computational_efficiencies):.2f}")
 
-    print(f"\n策略更新频率统计:")
-    print(f"  平均值: {np.mean(policy_update_frequencies):.4f}")
-    print(f"  标准差: {np.std(policy_update_frequencies):.4f}")
+    print(f"\n:")
+    print(f"  : {np.mean(policy_update_frequencies):.4f}")
+    print(f"  Standard deviation: {np.std(policy_update_frequencies):.4f}")
 
-    print(f"\n平均相似度统计:")
-    print(f"  平均值: {np.mean(avg_similarities):.4f}")
-    print(f"  标准差: {np.std(avg_similarities):.4f}")
+    print(f"\nAverage similarity statistics:")
+    print(f"  : {np.mean(avg_similarities):.4f}")
+    print(f"  Standard deviation: {np.std(avg_similarities):.4f}")
 
     print("\n" + "=" * 80)
-    print(f"所有 {EXPERIMENT_CONFIG['NUM_RUNS']} 次优化流程完成!")
+    print(f" {EXPERIMENT_CONFIG['NUM_RUNS']} completed!")
     print("=" * 80)
 
 
