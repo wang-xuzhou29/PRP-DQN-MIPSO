@@ -321,11 +321,39 @@ PRP-DQN-MIPSO/
 |-- LICENSE
 `-- README.md
 ```
+## 8. Comparative Experiments
 
-## 8. Reproducing the Experiments
+The `Experiment code/` directory contains the scripts used for the ablation studies and baseline comparisons. Each file is self-contained and can be executed independently.
+
+| Experiment | Script | Purpose |
+|---|---|---|
+| Experiment One | `Experiment One.py` | Evaluates isolated paths with a four-criteria scoring strategy based on path similarity, path-length difference, robustness, and DQN-derived information. |
+| Experiment Two | `Experiment Two No grouping.py` | Runs the training workflow without path grouping as the no-grouping baseline. |
+| Experiment Two | `Experiment Two groups without model reuse.py` | Uses path grouping but trains grouped models independently, without transferring model parameters between groups. |
+| Experiment Two | `Experiment Two Grouping and Model Reuse.py` | Uses path grouping and model reuse. The model trained on the high-correlation group is reused for the low-correlation group. |
+| Experiment Two | `Experiment Two Random grouping and model reuse.py` | Replaces correlation-based grouping with random grouping while keeping model reuse. |
+| Experiment Three | `Experiment Three No priority.py` | Removes prioritized replay and uses ordinary replay sampling. |
+| Experiment Three | `Experiment Three Priority Granted.py` | Enables prioritized replay to evaluate priority-based experience reuse. |
+| Experiment Four | `Experiment Four DQN.py` | Uses DQN as the reinforcement-learning baseline. |
+| Experiment Four | `Experiment Four PPO.py` | Uses PPO as the reinforcement-learning baseline. |
+| Experiment Four | `Experiment Four SAC.py` | Uses SAC as the reinforcement-learning baseline. |
+| Experiment Five | `Experiment Five PSO.py` | Uses standard PSO only. |
+| Experiment Five | `Experiment Five DQN+PSO.py` | Combines standard DQN with standard PSO. |
+| Experiment Five | `Experiment Five PRPDQN+PSO.py` | Combines PRP-DQN with standard PSO. |
+| Experiment Five | `Experiment Five PRPDQN+MIPSO.py` | Runs the proposed PRP-DQN and MI-PSO method. |
+
+Most comparative scripts are configured for 20 independent runs by default through `NUM_RUNS = 20`. The number of runs can usually be changed by modifying `NUM_RUNS` in the script or by passing a command-line argument when supported.
+
+## 9. Notes for Reproducibility
+
+- Some experiments use random sampling and stochastic optimization. For strict reproducibility, set the random seeds in the corresponding scripts before running.
+- Long-running experiments may require several minutes or more depending on hardware.
+- The released scripts preserve the experimental logic used in the study. Users may adjust output paths, run counts, and sample sizes for local testing.
+
+## 10. Reproducing the Experiments
 
 Detailed reproduction instructions are provided in [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md), including environment setup, main commands, auxiliary scripts, input and output directories, and random-seed settings.
 
-## 9. License
+## 11. License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
